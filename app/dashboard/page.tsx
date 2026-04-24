@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from "next/link"
-import { ArrowRight, MapPin, Plus, Star } from "lucide-react"
+import { ArrowRight, MapPin, Navigation, Plus, Star } from "lucide-react"
 import { redirect } from "next/navigation"
 import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
@@ -144,7 +144,17 @@ export default async function CustomerDashboard() {
               />
             ) : (
               upcoming.map((b) => (
-                <BookingItem key={b.id} booking={b} href="/bookings" />
+                <div key={b.id} className="flex flex-col gap-2">
+                  <BookingItem booking={b} href="/bookings" />
+                  {["driver_assigned", "driver_on_the_way", "arrived", "in_progress"].includes(b.status) && (
+                    <Link
+                      href={`/trip/${b.id}`}
+                      className="tap inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-semibold text-accent-foreground"
+                    >
+                      <Navigation className="h-4 w-4" /> Track driver
+                    </Link>
+                  )}
+                </div>
               ))
             )}
           </div>

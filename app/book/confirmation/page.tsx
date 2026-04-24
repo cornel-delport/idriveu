@@ -120,6 +120,12 @@ export default async function ConfirmationPage({
 
         <section className="mt-4 flex flex-col gap-2">
           <Link
+            href="/bookings"
+            className="tap btn-glow-strong inline-flex h-13 w-full items-center justify-center rounded-2xl text-[15px] font-semibold"
+          >
+            View your bookings
+          </Link>
+          <Link
             href="/dashboard"
             className="tap inline-flex h-12 items-center justify-between rounded-2xl bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-md"
           >

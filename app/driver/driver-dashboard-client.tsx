@@ -225,6 +225,15 @@ export function DriverDashboardClient({ bookings, driverName, driverRating, driv
               </a>
             </div>
 
+            {(['driver_assigned', 'driver_on_the_way', 'arrived', 'in_progress'] as ActiveStatus[]).includes(nextTrip.status as ActiveStatus) && (
+              <Link
+                href={`/driver/trip/${nextTrip.id}`}
+                className="tap mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-accent text-[13px] font-semibold text-accent-foreground"
+              >
+                <MapPin className="h-4 w-4" /> Open trip map
+              </Link>
+            )}
+
             {/* Trip progress */}
             <TripProgress booking={nextTrip} />
           </section>
