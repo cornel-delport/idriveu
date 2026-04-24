@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'
+
 import Link from "next/link"
 import { ArrowRight, MapPin, Plus, Star } from "lucide-react"
 import { redirect } from "next/navigation"
