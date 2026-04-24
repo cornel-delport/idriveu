@@ -7,7 +7,6 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  CircleDot,
   Clock,
   MapPin,
   Plus,
@@ -19,6 +18,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react"
+import { APIProvider } from "@vis.gl/react-google-maps"
 import { useSession } from "next-auth/react"
 import { services, type ServiceId, getService } from "@/lib/services"
 import { estimatePrice, formatZAR } from "@/lib/pricing"
@@ -27,14 +27,25 @@ import { ServiceCard } from "@/components/service-card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { createBooking } from "@/actions/bookings"
+import {
+  PlacesAutocomplete,
+  type PlaceResult,
+} from "@/components/booking/places-autocomplete"
 
 type Step = 0 | 1 | 2 | 3 | 4
 
+/** A location with optional resolved co-ordinates */
+interface Loc {
+  address: string
+  lat?: number
+  lng?: number
+}
+
 interface BookingState {
   serviceId: ServiceId
-  pickup: string
-  dropoff: string
-  stops: string[]
+  pickup: Loc
+  dropoff: Loc
+  stops: Loc[]
   date: string
   time: string
   passengers: number
@@ -68,8 +79,8 @@ export function BookingWizard() {
 
   const [state, setState] = useState<BookingState>(() => ({
     serviceId: (params.get("service") as ServiceId) || "drive-me-home",
-    pickup: params.get("pickup") || "",
-    dropoff: params.get("dropoff") || "",
+    pickup: { address: params.get("pickup") || "" },
+    dropoff: { address: params.get("dropoff") || "" },
     stops: [],
     date: params.get("date") || defaults.date,
     time: params.get("time") || defaults.time,
@@ -84,12 +95,14 @@ export function BookingWizard() {
     payment: "card",
   }))
 
-  // Derived distance/duration estimate (mocked)
+  // Derived distance/duration estimate (mocked until real routing is wired)
   const estimate = useMemo(() => {
     const svc = getService(state.serviceId)!
     const baseKm =
-      state.pickup && state.dropoff ? 8 + state.dropoff.length % 14 : 6
-    const extraStops = state.stops.filter(Boolean).length
+      state.pickup.address && state.dropoff.address
+        ? 8 + state.dropoff.address.length % 14
+        : 6
+    const extraStops = state.stops.filter((s) => s.address).length
     const distanceKm = baseKm + extraStops * 6
     const durationMinutes = Math.round(distanceKm * 2.3)
     const [h] = state.time.split(":").map(Number)
@@ -120,7 +133,8 @@ export function BookingWizard() {
 
   const canProceed = useMemo(() => {
     if (step === 0) return Boolean(state.serviceId)
-    if (step === 1) return state.pickup.length > 1 && state.dropoff.length > 1
+    if (step === 1)
+      return state.pickup.address.length > 1 && state.dropoff.address.length > 1
     if (step === 2) return Boolean(state.date && state.time)
     if (step === 3) return true
     return true
@@ -146,9 +160,15 @@ export function BookingWizard() {
   async function handleConfirm() {
     const result = await createBooking({
       serviceId: state.serviceId,
-      pickupAddress: state.pickup,
-      dropoffAddress: state.dropoff,
-      stops: state.stops.filter(Boolean).map((s) => ({ address: s })),
+      pickupAddress: state.pickup.address,
+      pickupLat: state.pickup.lat,
+      pickupLng: state.pickup.lng,
+      dropoffAddress: state.dropoff.address,
+      dropoffLat: state.dropoff.lat,
+      dropoffLng: state.dropoff.lng,
+      stops: state.stops
+        .filter((s) => s.address)
+        .map((s) => ({ address: s.address, lat: s.lat, lng: s.lng })),
       dateTime: `${state.date}T${state.time}:00`,
       passengerCount: state.passengers,
       usesCustomerVehicle: state.usesCustomerVehicle,
@@ -169,8 +189,8 @@ export function BookingWizard() {
     const payload = new URLSearchParams()
     payload.set("ref", result.reference)
     payload.set("service", state.serviceId)
-    payload.set("pickup", state.pickup)
-    payload.set("dropoff", state.dropoff)
+    payload.set("pickup", state.pickup.address)
+    payload.set("dropoff", state.dropoff.address)
     payload.set("date", state.date)
     payload.set("time", state.time)
     payload.set("price", String(estimate.price))
@@ -181,7 +201,10 @@ export function BookingWizard() {
     router.push(`/book/confirmation?${payload.toString()}`)
   }
 
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
+
   return (
+    <APIProvider apiKey={mapsApiKey} libraries={["places"]}>
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Top bar with stepper */}
       <header className="sticky top-0 z-30 glass-strong border-b border-border/70">
@@ -233,9 +256,9 @@ export function BookingWizard() {
             pickup={state.pickup}
             dropoff={state.dropoff}
             stops={state.stops}
-            onPickup={(v) => update("pickup", v)}
-            onDropoff={(v) => update("dropoff", v)}
-            onStops={(v) => update("stops", v)}
+            onPickup={(loc) => update("pickup", loc)}
+            onDropoff={(loc) => update("dropoff", loc)}
+            onStops={(locs) => update("stops", locs)}
           />
         )}
         {step === 2 && (
@@ -322,6 +345,7 @@ export function BookingWizard() {
         </div>
       </div>
     </div>
+    </APIProvider>
   )
 }
 
@@ -366,19 +390,19 @@ function StepRoute({
   onDropoff,
   onStops,
 }: {
-  pickup: string
-  dropoff: string
-  stops: string[]
-  onPickup: (v: string) => void
-  onDropoff: (v: string) => void
-  onStops: (v: string[]) => void
+  pickup: Loc
+  dropoff: Loc
+  stops: Loc[]
+  onPickup: (loc: PlaceResult) => void
+  onDropoff: (loc: PlaceResult) => void
+  onStops: (locs: Loc[]) => void
 }) {
   function addStop() {
-    onStops([...stops, ""])
+    onStops([...stops, { address: "" }])
   }
-  function updateStop(i: number, v: string) {
+  function updateStop(i: number, loc: PlaceResult) {
     const next = [...stops]
-    next[i] = v
+    next[i] = loc
     onStops(next)
   }
   function removeStop(i: number) {
@@ -391,87 +415,61 @@ function StepRoute({
         Where to?
       </h1>
       <p className="mt-1 text-[14px] text-muted-foreground">
-        Enter your pickup and drop off.
+        Search a restaurant, business or address.
       </p>
 
-      {/* Map */}
+      {/* Map preview */}
       <div className="mt-4">
         <RouteMap
           variant="full"
-          pickupLabel={pickup || "Pickup location"}
-          dropoffLabel={dropoff || "Drop off location"}
+          pickupLabel={pickup.address || "Pickup location"}
+          dropoffLabel={dropoff.address || "Drop off location"}
         />
       </div>
 
-      {/* Inputs */}
-      <div className="mt-4 rounded-3xl border border-border bg-card p-3">
-        <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
-            <CircleDot className="h-4 w-4 text-primary" />
-          </span>
-          <span className="flex-1">
-            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Pickup
-            </span>
-            <input
-              value={pickup}
-              onChange={(e) => onPickup(e.target.value)}
-              placeholder="e.g. The Lookout Deck, Plett"
-              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
-            />
-          </span>
-        </label>
+      {/* Address inputs with Places Autocomplete */}
+      <div className="mt-4 flex flex-col gap-2 rounded-3xl border border-border bg-card p-3">
+        <PlacesAutocomplete
+          value={pickup.address}
+          onChange={onPickup}
+          label="Pickup"
+          icon="pickup"
+          placeholder="e.g. The Lookout Deck, Plett"
+        />
 
         {stops.map((s, i) => (
-          <div key={i} className="mt-2 flex items-center gap-2">
-            <label className="flex flex-1 items-center gap-3 rounded-2xl bg-secondary p-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-              </span>
-              <span className="flex-1">
-                <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                  Stop {i + 1}
-                </span>
-                <input
-                  value={s}
-                  onChange={(e) => updateStop(i, e.target.value)}
-                  placeholder="Add a stop"
-                  className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
-                />
-              </span>
-            </label>
+          <div key={i} className="flex items-center gap-2">
+            <PlacesAutocomplete
+              value={s.address}
+              onChange={(loc) => updateStop(i, loc)}
+              label={`Stop ${i + 1}`}
+              icon="stop"
+              placeholder="Add a stop"
+              className="flex-1"
+            />
             <button
               type="button"
               onClick={() => removeStop(i)}
               aria-label="Remove stop"
-              className="tap flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-muted-foreground"
+              className="tap mt-0 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-muted-foreground"
             >
               <Trash2 className="h-4 w-4" />
             </button>
           </div>
         ))}
 
-        <label className="mt-2 flex items-center gap-3 rounded-2xl bg-secondary p-3">
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
-            <MapPin className="h-4 w-4 text-accent-foreground" />
-          </span>
-          <span className="flex-1">
-            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-              Drop off
-            </span>
-            <input
-              value={dropoff}
-              onChange={(e) => onDropoff(e.target.value)}
-              placeholder="e.g. 14 Cormorant Drive"
-              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
-            />
-          </span>
-        </label>
+        <PlacesAutocomplete
+          value={dropoff.address}
+          onChange={onDropoff}
+          label="Drop off"
+          icon="dropoff"
+          placeholder="e.g. 14 Cormorant Drive, Plett"
+        />
 
         <button
           type="button"
           onClick={addStop}
-          className="tap mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-[12px] font-semibold text-primary"
+          className="tap inline-flex h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-[12px] font-semibold text-primary"
         >
           <Plus className="h-4 w-4" /> Add a stop
         </button>
@@ -727,11 +725,11 @@ function StepConfirm({
           </div>
           <div className="mt-3 h-px bg-border" />
           <div className="mt-3 flex flex-col gap-2 text-[13px]">
-            <Row label="Pickup" value={state.pickup || "—"} />
-            {state.stops.filter(Boolean).map((s, i) => (
-              <Row key={i} label={`Stop ${i + 1}`} value={s} />
+            <Row label="Pickup" value={state.pickup.address || "—"} />
+            {state.stops.filter((s) => s.address).map((s, i) => (
+              <Row key={i} label={`Stop ${i + 1}`} value={s.address} />
             ))}
-            <Row label="Drop off" value={state.dropoff || "—"} />
+            <Row label="Drop off" value={state.dropoff.address || "—"} />
             <Row label="When" value={`${state.date} · ${state.time}`} />
             <Row label="Passengers" value={String(state.passengers)} />
             <Row
