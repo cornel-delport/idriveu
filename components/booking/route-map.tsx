@@ -46,12 +46,15 @@ function RouteLayer({
 }: RouteLayerProps) {
   const routesLib = useMapsLibrary("routes")
   const map = useMap()
-  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
+  const serviceRef = useRef<google.maps.DirectionsService | null>(null)
 
   useEffect(() => {
     if (!routesLib || !map) return
 
-    const service = new routesLib.DirectionsService()
+    if (!serviceRef.current) {
+      serviceRef.current = new routesLib.DirectionsService()
+    }
+
     const renderer = new routesLib.DirectionsRenderer({
       suppressMarkers: true,
       polylineOptions: {
@@ -61,9 +64,8 @@ function RouteLayer({
       },
     })
     renderer.setMap(map)
-    rendererRef.current = renderer
 
-    service.route(
+    serviceRef.current.route(
       {
         origin: { lat: originLat, lng: originLng },
         destination: { lat: destinationLat, lng: destinationLng },
@@ -72,13 +74,14 @@ function RouteLayer({
       (result, status) => {
         if (status === "OK" && result) {
           renderer.setDirections(result)
+        } else if (process.env.NODE_ENV !== "production") {
+          console.warn("[RouteMap] DirectionsService failed:", status)
         }
       },
     )
 
     return () => {
       renderer.setMap(null)
-      rendererRef.current = null
     }
   }, [routesLib, map, originLat, originLng, destinationLat, destinationLng])
 
@@ -122,8 +125,6 @@ export function RouteMap({
 
   const hasRoute =
     !noRoute &&
-    hasPickup &&
-    hasDropoff &&
     originLat !== undefined &&
     originLng !== undefined &&
     destinationLat !== undefined &&
