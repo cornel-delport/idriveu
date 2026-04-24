@@ -1,79 +1,106 @@
-"use client"
-
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { toast } from "sonner"
-import { AuthShell } from "@/components/auth/auth-shell"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { Field, FieldGroup, FieldLabel, FieldDescription } from "@/components/ui/field"
+import { BrandLogo } from "@/components/brand-logo"
+import { ArrowLeft } from "lucide-react"
 
 export default function SignupPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(false)
-
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      toast.success("Account created — welcome aboard!")
-      router.push("/dashboard")
-    }, 600)
-  }
-
   return (
-    <AuthShell
-      subtitle="Create account"
-      title="Your trusted Plett driver, one tap away."
-      footer={
-        <>
-          Already have an account?{" "}
-          <Link href="/login" className="font-medium text-primary hover:underline">
-            Sign in
-          </Link>
-        </>
-      }
-    >
-      <form onSubmit={onSubmit} className="space-y-4">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="firstname">First name</Label>
-            <Input id="firstname" required placeholder="Thandi" />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="lastname">Last name</Label>
-            <Input id="lastname" required placeholder="Mokoena" />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" required placeholder="you@example.com" />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="phone">Mobile number</Label>
-          <Input id="phone" type="tel" required placeholder="+27 82 ..." />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="password">Password</Label>
-          <Input id="password" type="password" required placeholder="Minimum 8 characters" />
-        </div>
-        <Button
-          type="submit"
-          className="w-full rounded-full"
-          disabled={loading}
+    <main className="flex min-h-dvh flex-col bg-background">
+      <header className="flex items-center justify-between px-5 pt-6 pb-4">
+        <Link
+          href="/"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground"
+          aria-label="Back"
         >
-          {loading ? "Creating account..." : "Create account"}
-        </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          By signing up you agree to our{" "}
-          <Link href="/terms" className="underline underline-offset-2 hover:text-foreground">
-            terms & safety
-          </Link>
-          .
-        </p>
-      </form>
-    </AuthShell>
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <BrandLogo size="sm" />
+        <div className="h-10 w-10" aria-hidden />
+      </header>
+
+      <div className="flex flex-1 flex-col px-5 pt-6">
+        <div className="mb-8">
+          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-foreground text-balance">
+            Create your account
+          </h1>
+          <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            Book a trusted Plett driver in under a minute.
+          </p>
+        </div>
+
+        <form className="flex flex-1 flex-col">
+          <FieldGroup className="gap-5">
+            <div className="grid grid-cols-2 gap-3">
+              <Field>
+                <FieldLabel htmlFor="firstname">First name</FieldLabel>
+                <Input id="firstname" placeholder="Thandi" className="h-12 text-base" />
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="lastname">Last name</FieldLabel>
+                <Input id="lastname" placeholder="Mokoena" className="h-12 text-base" />
+              </Field>
+            </div>
+
+            <Field>
+              <FieldLabel htmlFor="su-email">Email</FieldLabel>
+              <Input
+                id="su-email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@example.com"
+                className="h-12 text-base"
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="su-phone">Mobile number</FieldLabel>
+              <Input
+                id="su-phone"
+                type="tel"
+                inputMode="tel"
+                placeholder="+27 82 123 4567"
+                className="h-12 text-base"
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="su-password">Password</FieldLabel>
+              <Input
+                id="su-password"
+                type="password"
+                autoComplete="new-password"
+                placeholder="Minimum 8 characters"
+                className="h-12 text-base"
+              />
+              <FieldDescription>
+                By signing up you agree to our{" "}
+                <Link href="/terms" className="font-medium text-primary hover:underline">
+                  terms & safety
+                </Link>
+                .
+              </FieldDescription>
+            </Field>
+          </FieldGroup>
+
+          <div className="mt-auto pb-8 pt-10">
+            <Button
+              asChild
+              size="lg"
+              className="h-12 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+            >
+              <Link href="/dashboard">Create account</Link>
+            </Button>
+            <p className="mt-6 text-center text-[14px] text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/login" className="font-semibold text-primary hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </form>
+      </div>
+    </main>
   )
 }
