@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useMapsLibrary } from "@vis.gl/react-google-maps"
-import { MapPin, CircleDot, X, Loader2 } from "lucide-react"
+import { MapPin, CircleDot, X, Loader2, Navigation } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface PlaceResult {
@@ -28,6 +28,10 @@ interface PlacesAutocompleteProps {
   label: string
   icon?: "pickup" | "dropoff" | "stop"
   className?: string
+  /** Called when user taps "Use my location" — parent handles geolocation */
+  onUseCurrentLocation?: () => void
+  /** Shows a loading spinner on the "Use my location" button */
+  locating?: boolean
 }
 
 // Plettenberg Bay bias centre — keeps suggestions local by default
@@ -41,6 +45,8 @@ export function PlacesAutocomplete({
   label,
   icon = "stop",
   className,
+  onUseCurrentLocation,
+  locating = false,
 }: PlacesAutocompleteProps) {
   const placesLib = useMapsLibrary("places")
 
@@ -162,7 +168,7 @@ export function PlacesAutocomplete({
     <div className={cn("relative", className)}>
       <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-card ring-1 ring-border">
-          {loading ? (
+          {loading || locating ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : (
             IconEl
@@ -204,6 +210,21 @@ export function PlacesAutocomplete({
             )}
           </div>
         </span>
+
+        {/* "Use my location" button — only shown on pickup field when empty */}
+        {onUseCurrentLocation && !inputValue && (
+          <button
+            type="button"
+            onMouseDown={(e) => {
+              e.preventDefault()
+              onUseCurrentLocation()
+            }}
+            aria-label="Use my current location"
+            className="shrink-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20"
+          >
+            <Navigation className="h-4 w-4" />
+          </button>
+        )}
       </label>
 
       {/* Suggestions dropdown */}

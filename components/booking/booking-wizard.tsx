@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react"
-import { APIProvider } from "@vis.gl/react-google-maps"
+import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps"
 import { useSession } from "next-auth/react"
 import { services, type ServiceId, getService } from "@/lib/services"
 import { estimatePrice, formatZAR } from "@/lib/pricing"
@@ -397,6 +397,49 @@ function StepRoute({
   onDropoff: (loc: PlaceResult) => void
   onStops: (locs: Loc[]) => void
 }) {
+  const geocodingLib = useMapsLibrary("geocoding")
+  const [locating, setLocating] = useState(false)
+
+  /** Reverse-geocode a lat/lng and update the pickup field */
+  async function geolocate() {
+    if (!navigator.geolocation) return
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng } = pos.coords
+        if (!geocodingLib) {
+          // Library not loaded yet — just store raw coords
+          onPickup({ address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng })
+          setLocating(false)
+          return
+        }
+        const geocoder = new geocodingLib.Geocoder()
+        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+          setLocating(false)
+          if (status === "OK" && results?.[0]) {
+            onPickup({
+              address: results[0].formatted_address,
+              lat,
+              lng,
+            })
+          } else {
+            onPickup({ address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng })
+          }
+        })
+      },
+      () => setLocating(false),
+      { enableHighAccuracy: true, timeout: 10_000 },
+    )
+  }
+
+  // Auto-geolocate when the step mounts if pickup is still empty
+  useEffect(() => {
+    if (!pickup.address) {
+      geolocate()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   function addStop() {
     onStops([...stops, { address: "" }])
   }
@@ -424,6 +467,10 @@ function StepRoute({
           variant="full"
           pickupLabel={pickup.address || "Pickup location"}
           dropoffLabel={dropoff.address || "Drop off location"}
+          pickupLat={pickup.lat}
+          pickupLng={pickup.lng}
+          dropoffLat={dropoff.lat}
+          dropoffLng={dropoff.lng}
         />
       </div>
 
@@ -435,6 +482,8 @@ function StepRoute({
           label="Pickup"
           icon="pickup"
           placeholder="e.g. The Lookout Deck, Plett"
+          onUseCurrentLocation={geolocate}
+          locating={locating}
         />
 
         {stops.map((s, i) => (
