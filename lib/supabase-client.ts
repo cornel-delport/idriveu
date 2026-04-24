@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * Client-side Supabase singleton.
  * Used for Realtime subscriptions to driver locations only.
@@ -6,9 +8,23 @@
  * "DriverLocation" table in Supabase dashboard:
  *   Table Editor → Replication → toggle DriverLocation ON
  */
-import { createClient } from "@supabase/supabase-js"
+import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
-export const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-)
+declare global {
+  // eslint-disable-next-line no-var
+  var _supabase: SupabaseClient | undefined
+}
+
+function makeClient(): SupabaseClient {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  if (!url || !key) {
+    throw new Error(
+      "NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY must be set in .env.local",
+    )
+  }
+  return createClient(url, key)
+}
+
+export const supabase: SupabaseClient =
+  globalThis._supabase ?? (globalThis._supabase = makeClient())
