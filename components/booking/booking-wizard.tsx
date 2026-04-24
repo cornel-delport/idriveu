@@ -1,806 +1,865 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
 import {
   ArrowLeft,
   ArrowRight,
-  Baby,
-  Calendar as CalendarIcon,
-  Car,
-  Check,
+  CalendarDays,
+  CircleDot,
   Clock,
   MapPin,
-  MinusCircle,
-  PlusCircle,
+  Plus,
+  Trash2,
+  X,
+  Car,
+  UserCheck,
+  Baby,
   ShieldCheck,
-  Sparkles,
-  Users,
-  UserRound,
+  CheckCircle2,
 } from "lucide-react"
-import { toast } from "sonner"
-import { services, type ServiceId } from "@/lib/services"
+import { services, type ServiceId, getService } from "@/lib/services"
 import { estimatePrice, formatZAR } from "@/lib/pricing"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Switch } from "@/components/ui/switch"
-import { RouteMapPreview } from "./route-map-preview"
+import { RouteMap } from "@/components/booking/route-map"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 type Step = 0 | 1 | 2 | 3 | 4
 
 interface BookingState {
   serviceId: ServiceId
-  date: string
-  time: string
-  passengerCount: number
-  returnTrip: boolean
   pickup: string
   dropoff: string
   stops: string[]
+  date: string
+  time: string
+  passengers: number
   usesCustomerVehicle: boolean
   requiresFemaleDriver: boolean
   childPickup: boolean
-  childName: string
-  childSchool: string
-  childAdult: string
-  childEmergency: string
-  vehicleConfirmed: boolean
   notes: string
+  name: string
+  phone: string
+  email: string
+  payment: "card" | "cash" | "eft"
 }
 
-const popularPlaces = [
-  "The Lookout Deck, Plettenberg Bay",
-  "Enrico Restaurant, Keurboomstrand",
-  "Robberg Beach Lodge, Plett",
-  "Bramon Wine Estate, The Crags",
-  "George Airport (GRJ)",
-  "Tsitsikamma National Park",
-  "Plettenberg Primary School",
-  "Hog Hollow Country Lodge",
-]
-
-const stepTitles = [
-  "Choose your service",
-  "When & who",
-  "Where to?",
-  "Trip details",
-  "Review & confirm",
-]
+const stepLabels = ["Service", "Route", "When", "Options", "Confirm"] as const
 
 export function BookingWizard() {
   const router = useRouter()
   const params = useSearchParams()
-  const initialService = (params.get("service") as ServiceId) || "drive-me-home"
-
   const [step, setStep] = useState<Step>(0)
-  const [state, setState] = useState<BookingState>({
-    serviceId: initialService,
-    date: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
-    time: "19:00",
-    passengerCount: 2,
-    returnTrip: false,
-    pickup: "",
-    dropoff: "",
+
+  const defaults = useMemo(() => {
+    const now = new Date()
+    now.setMinutes(now.getMinutes() + 60)
+    const pad = (n: number) => String(n).padStart(2, "0")
+    return {
+      date: `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`,
+      time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+    }
+  }, [])
+
+  const [state, setState] = useState<BookingState>(() => ({
+    serviceId: (params.get("service") as ServiceId) || "drive-me-home",
+    pickup: params.get("pickup") || "",
+    dropoff: params.get("dropoff") || "",
     stops: [],
+    date: params.get("date") || defaults.date,
+    time: params.get("time") || defaults.time,
+    passengers: 2,
     usesCustomerVehicle: true,
     requiresFemaleDriver: false,
-    childPickup: initialService === "child-pickup",
-    childName: "",
-    childSchool: "",
-    childAdult: "",
-    childEmergency: "",
-    vehicleConfirmed: false,
+    childPickup: false,
     notes: "",
-  })
+    name: "",
+    phone: "",
+    email: "",
+    payment: "card",
+  }))
 
-  const update = <K extends keyof BookingState>(key: K, value: BookingState[K]) =>
+  // Derived distance/duration estimate (mocked)
+  const estimate = useMemo(() => {
+    const svc = getService(state.serviceId)!
+    const baseKm =
+      state.pickup && state.dropoff ? 8 + state.dropoff.length % 14 : 6
+    const extraStops = state.stops.filter(Boolean).length
+    const distanceKm = baseKm + extraStops * 6
+    const durationMinutes = Math.round(distanceKm * 2.3)
+    const [h] = state.time.split(":").map(Number)
+    const isNight = !Number.isNaN(h) && (h >= 22 || h < 5)
+    const price = estimatePrice({
+      serviceId: state.serviceId,
+      distanceKm,
+      durationMinutes,
+      isNight,
+    })
+    return { distanceKm, durationMinutes, price, isNight, service: svc }
+  }, [state])
+
+  function update<K extends keyof BookingState>(
+    key: K,
+    value: BookingState[K],
+  ) {
     setState((s) => ({ ...s, [key]: value }))
-
-  const service = useMemo(
-    () => services.find((s) => s.id === state.serviceId)!,
-    [state.serviceId],
-  )
-
-  // Fake distance/duration estimate from pickup+dropoff length
-  const distanceKm = useMemo(() => {
-    if (!state.pickup || !state.dropoff) return 0
-    const base = (state.pickup.length + state.dropoff.length) / 4
-    const withStops = base + state.stops.length * 4
-    return Number(Math.min(220, Math.max(3, withStops)).toFixed(1))
-  }, [state.pickup, state.dropoff, state.stops])
-
-  const durationMinutes = Math.max(8, Math.round(distanceKm * 1.6))
-  const hour = Number(state.time.split(":")[0] || "0")
-  const isNight = hour >= 21 || hour < 5
-
-  const estimate = useMemo(
-    () =>
-      state.pickup && state.dropoff
-        ? estimatePrice({
-            serviceId: state.serviceId,
-            distanceKm,
-            durationMinutes,
-            isNight,
-          })
-        : service.fromPrice,
-    [state, distanceKm, durationMinutes, isNight, service.fromPrice],
-  )
-
-  const canNext = () => {
-    if (step === 0) return !!state.serviceId
-    if (step === 1) return !!state.date && !!state.time && state.passengerCount > 0
-    if (step === 2) return state.pickup.length > 3 && state.dropoff.length > 3
-    if (step === 3) {
-      if (state.serviceId !== "parcel") {
-        if (state.usesCustomerVehicle && !state.vehicleConfirmed) return false
-      }
-      if (state.childPickup) {
-        return !!state.childName && !!state.childSchool && !!state.childAdult
-      }
-      return true
-    }
-    return true
   }
 
-  const submit = async () => {
-    toast.success("Booking received — check your email for confirmation.")
-    const ref = "JK-" + Math.floor(1000 + Math.random() * 9000)
-    const params = new URLSearchParams({
-      ref,
-      service: service.name,
-      date: state.date,
-      time: state.time,
-      pickup: state.pickup,
-      dropoff: state.dropoff,
-      price: String(estimate),
-    })
-    router.push(`/book/confirmation?${params.toString()}`)
+  function next() {
+    setStep((s) => Math.min(4, (s + 1) as Step))
+  }
+  function back() {
+    if (step === 0) router.back()
+    else setStep((s) => Math.max(0, (s - 1) as Step))
+  }
+
+  const canProceed = useMemo(() => {
+    if (step === 0) return Boolean(state.serviceId)
+    if (step === 1) return state.pickup.length > 1 && state.dropoff.length > 1
+    if (step === 2) return Boolean(state.date && state.time)
+    if (step === 3) return true
+    return true
+  }, [step, state])
+
+  // Scroll to top on step change
+  useEffect(() => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 })
+  }, [step])
+
+  function handleConfirm() {
+    const payload = new URLSearchParams()
+    payload.set("ref", `IDU-${Math.floor(4000 + Math.random() * 900)}`)
+    payload.set("service", state.serviceId)
+    payload.set("pickup", state.pickup)
+    payload.set("dropoff", state.dropoff)
+    payload.set("date", state.date)
+    payload.set("time", state.time)
+    payload.set("price", String(estimate.price))
+    payload.set("distance", String(estimate.distanceKm))
+    payload.set("duration", String(estimate.durationMinutes))
+    payload.set("payment", state.payment)
+    toast.success("Booking sent — we'll confirm shortly")
+    router.push(`/book/confirmation?${payload.toString()}`)
   }
 
   return (
-    <div className="grid gap-8 md:grid-cols-[1fr_360px]">
-      <div>
-        {/* Stepper */}
-        <ol className="mb-8 hidden grid-cols-5 gap-2 md:grid">
-          {stepTitles.map((title, i) => (
-            <li key={title} className="flex flex-col gap-2">
-              <div
-                className={cn(
-                  "h-1.5 rounded-full",
-                  i <= step ? "bg-primary" : "bg-border",
-                )}
-              />
-              <div className="flex items-center gap-2 text-xs">
-                <span
-                  className={cn(
-                    "flex size-5 items-center justify-center rounded-full text-[10px] font-semibold",
-                    i < step
-                      ? "bg-primary text-primary-foreground"
-                      : i === step
-                        ? "bg-accent text-accent-foreground"
-                        : "bg-secondary text-muted-foreground",
-                  )}
-                >
-                  {i < step ? <Check className="size-3" /> : i + 1}
-                </span>
-                <span
-                  className={cn(
-                    i <= step
-                      ? "font-medium text-foreground"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {title}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ol>
-
-        <div className="md:hidden mb-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-            Step {step + 1} of {stepTitles.length}
-          </p>
-          <h2 className="mt-1 font-serif text-2xl font-semibold">
-            {stepTitles[step]}
-          </h2>
-          <div className="mt-3 h-1.5 rounded-full bg-border">
-            <div
-              className="h-1.5 rounded-full bg-primary transition-all"
-              style={{ width: `${((step + 1) / stepTitles.length) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-border bg-card p-5 md:p-8">
-          {step === 0 && (
-            <div>
-              <h2 className="hidden font-serif text-2xl font-semibold md:block">
-                {stepTitles[0]}
-              </h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Pick the service that fits your plan. You can always change it.
-              </p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {services.map((s) => {
-                  const active = state.serviceId === s.id
-                  return (
-                    <button
-                      type="button"
-                      key={s.id}
-                      onClick={() => {
-                        update("serviceId", s.id)
-                        update("childPickup", s.id === "child-pickup")
-                      }}
-                      className={cn(
-                        "flex gap-3 rounded-xl border p-4 text-left transition-all",
-                        active
-                          ? "border-primary bg-primary/5 shadow-sm"
-                          : "border-border bg-background hover:border-primary/30",
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "flex size-10 flex-none items-center justify-center rounded-lg",
-                          active
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-primary/10 text-primary",
-                        )}
-                      >
-                        <s.icon className="size-5" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-semibold">{s.name}</span>
-                          <span className="text-xs font-semibold text-muted-foreground">
-                            {s.priceLabel}
-                          </span>
-                        </div>
-                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
-                          {s.description}
-                        </p>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {step === 1 && (
-            <div className="space-y-6">
-              <h2 className="hidden font-serif text-2xl font-semibold md:block">
-                {stepTitles[1]}
-              </h2>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="date" className="text-sm">
-                    <CalendarIcon className="mr-1.5 inline size-4 text-accent" />
-                    Date
-                  </Label>
-                  <Input
-                    id="date"
-                    type="date"
-                    value={state.date}
-                    min={new Date().toISOString().slice(0, 10)}
-                    onChange={(e) => update("date", e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="time" className="text-sm">
-                    <Clock className="mr-1.5 inline size-4 text-accent" />
-                    Pickup time
-                  </Label>
-                  <Input
-                    id="time"
-                    type="time"
-                    value={state.time}
-                    onChange={(e) => update("time", e.target.value)}
-                  />
-                  {isNight && (
-                    <p className="text-xs text-accent-foreground/80">
-                      Late-night pickup — night surcharge applies.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-sm">
-                  <Users className="mr-1.5 inline size-4 text-accent" />
-                  Passengers
-                </Label>
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() =>
-                      update(
-                        "passengerCount",
-                        Math.max(1, state.passengerCount - 1),
-                      )
-                    }
-                  >
-                    <MinusCircle className="size-4" />
-                  </Button>
-                  <span className="min-w-10 text-center font-serif text-2xl font-semibold">
-                    {state.passengerCount}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() =>
-                      update(
-                        "passengerCount",
-                        Math.min(7, state.passengerCount + 1),
-                      )
-                    }
-                  >
-                    <PlusCircle className="size-4" />
-                  </Button>
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    Max 7 passengers (in your vehicle)
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-secondary/40 p-4">
-                <div>
-                  <p className="text-sm font-medium">Return trip?</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    We&apos;ll hold the driver to take you back.
-                  </p>
-                </div>
-                <Switch
-                  checked={state.returnTrip}
-                  onCheckedChange={(v) => update("returnTrip", v)}
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-5">
-              <h2 className="hidden font-serif text-2xl font-semibold md:block">
-                {stepTitles[2]}
-              </h2>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="pickup" className="text-sm">
-                  <MapPin className="mr-1.5 inline size-4 text-primary" />
-                  Pickup location
-                </Label>
-                <Input
-                  id="pickup"
-                  placeholder="e.g. The Lookout Deck, Plett"
-                  value={state.pickup}
-                  onChange={(e) => update("pickup", e.target.value)}
-                  list="popular-places"
-                />
-                <datalist id="popular-places">
-                  {popularPlaces.map((p) => (
-                    <option key={p} value={p} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label htmlFor="dropoff" className="text-sm">
-                  <MapPin className="mr-1.5 inline size-4 text-accent" />
-                  Dropoff location
-                </Label>
-                <Input
-                  id="dropoff"
-                  placeholder="e.g. 14 Cormorant Drive, Plett"
-                  value={state.dropoff}
-                  onChange={(e) => update("dropoff", e.target.value)}
-                  list="popular-places"
-                />
-              </div>
-
-              {state.stops.map((stop, i) => (
-                <div key={i} className="space-y-1.5">
-                  <Label className="text-sm">
-                    <MapPin className="mr-1.5 inline size-4 text-muted-foreground" />
-                    Stop {i + 1}
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a stop"
-                      value={stop}
-                      onChange={(e) => {
-                        const next = [...state.stops]
-                        next[i] = e.target.value
-                        update("stops", next)
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        update(
-                          "stops",
-                          state.stops.filter((_, idx) => idx !== i),
-                        )
-                      }
-                    >
-                      <MinusCircle className="size-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
-
-              {state.stops.length < 4 && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="rounded-full"
-                  onClick={() => update("stops", [...state.stops, ""])}
-                >
-                  <PlusCircle className="size-4" /> Add a stop
-                </Button>
-              )}
-
-              <div className="pt-2">
-                <RouteMapPreview
-                  pickup={state.pickup}
-                  dropoff={state.dropoff}
-                  distanceKm={state.pickup && state.dropoff ? distanceKm : undefined}
-                  durationMinutes={
-                    state.pickup && state.dropoff ? durationMinutes : undefined
-                  }
-                />
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Distance and time are estimates. Google Maps route preview
-                  will replace this once the API key is added.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-5">
-              <h2 className="hidden font-serif text-2xl font-semibold md:block">
-                {stepTitles[3]}
-              </h2>
-
-              <div className="rounded-xl border border-border bg-secondary/40 p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex size-9 flex-none items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Car className="size-4" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">
-                      John will drive your own car
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Toggle off if you&apos;d like us to arrange a vehicle.
-                    </p>
-                  </div>
-                  <Switch
-                    checked={state.usesCustomerVehicle}
-                    onCheckedChange={(v) => update("usesCustomerVehicle", v)}
-                  />
-                </div>
-
-                {state.usesCustomerVehicle && (
-                  <label className="mt-4 flex items-start gap-3 rounded-lg bg-background p-3 text-sm">
-                    <Checkbox
-                      checked={state.vehicleConfirmed}
-                      onCheckedChange={(v) =>
-                        update("vehicleConfirmed", v === true)
-                      }
-                      className="mt-0.5"
-                    />
-                    <span className="text-foreground/90">
-                      I confirm I have permission to authorise John to drive my
-                      vehicle, and that the car is roadworthy, licensed and
-                      insured.
-                    </span>
-                  </label>
-                )}
-              </div>
-
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-border p-4">
-                <div className="flex gap-3">
-                  <div className="flex size-9 flex-none items-center justify-center rounded-lg bg-accent/20 text-accent-foreground">
-                    <UserRound className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">
-                      Request a female driver
-                    </p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      Junior will be assigned if available.
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={state.requiresFemaleDriver}
-                  onCheckedChange={(v) => update("requiresFemaleDriver", v)}
-                />
-              </div>
-
-              <div className="flex items-start justify-between gap-4 rounded-xl border border-border p-4">
-                <div className="flex gap-3">
-                  <div className="flex size-9 flex-none items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <Baby className="size-4" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">This is a child pickup</p>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      We&apos;ll require extra safety details.
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={state.childPickup}
-                  onCheckedChange={(v) => update("childPickup", v)}
-                />
-              </div>
-
-              {state.childPickup && (
-                <div className="grid gap-4 rounded-xl border border-accent/40 bg-accent/5 p-4 sm:grid-cols-2">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Child&apos;s name &amp; age</Label>
-                    <Input
-                      placeholder="e.g. Nia (7)"
-                      value={state.childName}
-                      onChange={(e) => update("childName", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">School or location</Label>
-                    <Input
-                      placeholder="e.g. Plettenberg Primary"
-                      value={state.childSchool}
-                      onChange={(e) => update("childSchool", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Authorised adult</Label>
-                    <Input
-                      placeholder="Parent / guardian name"
-                      value={state.childAdult}
-                      onChange={(e) => update("childAdult", e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Emergency contact</Label>
-                    <Input
-                      placeholder="+27 ..."
-                      value={state.childEmergency}
-                      onChange={(e) => update("childEmergency", e.target.value)}
-                    />
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="notes" className="text-sm">
-                  Trip notes (optional)
-                </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="Where to find the car, parking gate codes, special requests..."
-                  value={state.notes}
-                  onChange={(e) => update("notes", e.target.value)}
-                  rows={3}
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-6">
-              <h2 className="hidden font-serif text-2xl font-semibold md:block">
-                {stepTitles[4]}
-              </h2>
-
-              <div className="rounded-2xl border border-border bg-secondary/30 p-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                    <service.icon className="size-5" />
-                  </div>
-                  <div>
-                    <p className="font-serif text-lg font-semibold">
-                      {service.name}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {service.tagline}
-                    </p>
-                  </div>
-                </div>
-
-                <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-                  <Summary label="When" value={`${formatDate(state.date)} · ${state.time}`} />
-                  <Summary label="Passengers" value={`${state.passengerCount}`} />
-                  <Summary label="Pickup" value={state.pickup} />
-                  <Summary label="Dropoff" value={state.dropoff} />
-                  {state.stops.filter(Boolean).length > 0 && (
-                    <Summary
-                      label="Stops"
-                      value={state.stops.filter(Boolean).join(", ")}
-                    />
-                  )}
-                  <Summary
-                    label="Vehicle"
-                    value={
-                      state.usesCustomerVehicle
-                        ? "Customer's own car"
-                        : "Arranged by us"
-                    }
-                  />
-                  {state.requiresFemaleDriver && (
-                    <Summary label="Driver" value="Female driver requested" />
-                  )}
-                  {state.returnTrip && <Summary label="Return" value="Yes" />}
-                </dl>
-                {state.notes && (
-                  <div className="mt-4 rounded-lg bg-background p-3 text-sm">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Notes
-                    </p>
-                    <p className="mt-1 text-foreground/90">{state.notes}</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium">Estimated total</p>
-                  <p className="font-serif text-3xl font-semibold text-primary">
-                    {formatZAR(estimate)}
-                  </p>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Includes {distanceKm.toFixed(1)} km, {durationMinutes} min
-                  {isNight && ", night surcharge"} · VAT where applicable
-                </p>
-              </div>
-
-              <div className="flex items-start gap-3 rounded-xl border border-border p-4 text-sm">
-                <ShieldCheck className="mt-0.5 size-5 flex-none text-primary" />
-                <p className="text-muted-foreground">
-                  This is a private driver &amp; chauffeur booking — not a
-                  metered taxi. Payment is secured via Stripe (PayFast, Ozow
-                  and Yoco coming soon). You&apos;ll only be charged after John
-                  confirms the booking.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="mt-6 flex items-center justify-between">
-          <Button
-            type="button"
-            variant="ghost"
-            className="rounded-full"
-            onClick={() => setStep((s) => Math.max(0, (s - 1)) as Step)}
-            disabled={step === 0}
+    <div className="flex min-h-dvh flex-col bg-background">
+      {/* Top bar with stepper */}
+      <header className="sticky top-0 z-30 glass-strong border-b border-border/70">
+        <div className="mx-auto flex max-w-xl items-center justify-between px-4 pt-3">
+          <button
+            onClick={back}
+            aria-label="Go back"
+            className="tap flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground"
           >
-            <ArrowLeft className="size-4" /> Back
-          </Button>
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <span className="text-[13px] font-medium text-muted-foreground">
+            Step {step + 1} of {stepLabels.length}
+            <span className="mx-2 text-border">·</span>
+            <span className="text-foreground">{stepLabels[step]}</span>
+          </span>
+          <Link
+            href="/"
+            aria-label="Close"
+            className="tap flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-foreground"
+          >
+            <X className="h-4 w-4" />
+          </Link>
+        </div>
+        {/* Progress */}
+        <div className="mx-auto mt-3 flex max-w-xl gap-1 px-4 pb-3">
+          {stepLabels.map((_, i) => (
+            <div
+              key={i}
+              className={cn(
+                "h-1 flex-1 rounded-full transition-colors",
+                i <= step ? "bg-primary" : "bg-secondary",
+              )}
+            />
+          ))}
+        </div>
+      </header>
+
+      {/* Step content */}
+      <main className="mx-auto w-full max-w-xl flex-1 px-4 pb-40 pt-4">
+        {step === 0 && (
+          <StepService
+            serviceId={state.serviceId}
+            onChange={(id) => update("serviceId", id)}
+          />
+        )}
+        {step === 1 && (
+          <StepRoute
+            pickup={state.pickup}
+            dropoff={state.dropoff}
+            stops={state.stops}
+            onPickup={(v) => update("pickup", v)}
+            onDropoff={(v) => update("dropoff", v)}
+            onStops={(v) => update("stops", v)}
+          />
+        )}
+        {step === 2 && (
+          <StepWhen
+            date={state.date}
+            time={state.time}
+            passengers={state.passengers}
+            onDate={(v) => update("date", v)}
+            onTime={(v) => update("time", v)}
+            onPassengers={(v) => update("passengers", v)}
+          />
+        )}
+        {step === 3 && (
+          <StepOptions
+            state={state}
+            onChange={(partial) => setState((s) => ({ ...s, ...partial }))}
+          />
+        )}
+        {step === 4 && (
+          <StepConfirm
+            state={state}
+            onChange={(partial) => setState((s) => ({ ...s, ...partial }))}
+            estimate={estimate}
+          />
+        )}
+      </main>
+
+      {/* Sticky price + action bar */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border/80 glass-strong pb-safe">
+        <div className="mx-auto max-w-xl px-4 pt-3">
+          <div className="mb-2 flex items-end justify-between">
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Estimated total
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-[22px] font-semibold tracking-tight">
+                  {formatZAR(estimate.price)}
+                </span>
+                <span className="text-[12px] text-muted-foreground">
+                  {estimate.distanceKm.toFixed(1)} km ·{" "}
+                  {estimate.durationMinutes} min
+                </span>
+              </div>
+            </div>
+            {estimate.isNight && (
+              <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
+                Night rate
+              </span>
+            )}
+          </div>
           {step < 4 ? (
-            <Button
-              type="button"
-              className="rounded-full"
-              disabled={!canNext()}
-              onClick={() => setStep((s) => Math.min(4, (s + 1)) as Step)}
+            <button
+              onClick={next}
+              disabled={!canProceed}
+              className={cn(
+                "tap inline-flex h-13 w-full items-center justify-between rounded-2xl px-5 py-3.5 text-[15px] font-semibold shadow-md",
+                canProceed
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-secondary text-muted-foreground",
+              )}
             >
-              Continue <ArrowRight className="size-4" />
-            </Button>
+              <span>Continue</span>
+              <span
+                className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full",
+                  canProceed ? "bg-primary-foreground/15" : "bg-card",
+                )}
+              >
+                <ArrowRight className="h-4 w-4" />
+              </span>
+            </button>
           ) : (
-            <Button type="button" className="rounded-full" onClick={submit}>
-              Confirm & pay <Sparkles className="size-4" />
-            </Button>
+            <button
+              onClick={handleConfirm}
+              className="tap inline-flex h-13 w-full items-center justify-between rounded-2xl bg-accent px-5 py-3.5 text-[15px] font-semibold text-accent-foreground shadow-md"
+            >
+              <span>Confirm &amp; request driver</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-foreground/10">
+                <CheckCircle2 className="h-4 w-4" />
+              </span>
+            </button>
           )}
         </div>
       </div>
+    </div>
+  )
+}
 
-      {/* Sticky summary */}
-      <aside className="space-y-4 md:sticky md:top-24 md:self-start">
-        <div className="rounded-2xl border border-border bg-card p-5">
-          <p className="text-xs font-semibold uppercase tracking-wider text-accent">
-            Your booking
-          </p>
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <service.icon className="size-5" />
-            </div>
-            <div>
-              <p className="font-serif text-base font-semibold">
-                {service.name}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {state.date ? formatDate(state.date) : "—"} · {state.time}
-              </p>
-            </div>
+/* ------------------------ Steps ------------------------ */
+
+function StepService({
+  serviceId,
+  onChange,
+}: {
+  serviceId: ServiceId
+  onChange: (id: ServiceId) => void
+}) {
+  return (
+    <section>
+      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        What can we help you with?
+      </h1>
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        Choose a service — you can change it later.
+      </p>
+      <ul className="mt-5 grid grid-cols-2 gap-3">
+        {services.map((s) => {
+          const Icon = s.icon
+          const active = serviceId === s.id
+          return (
+            <li key={s.id}>
+              <button
+                type="button"
+                onClick={() => onChange(s.id)}
+                className={cn(
+                  "tap flex w-full flex-col items-start gap-3 rounded-2xl border p-4 text-left transition",
+                  active
+                    ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30"
+                    : "border-border bg-card text-foreground",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-11 w-11 items-center justify-center rounded-xl",
+                    active ? "bg-primary-foreground/15" : "bg-primary/10 text-primary",
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block text-[14px] font-semibold leading-tight">
+                    {s.shortName}
+                  </span>
+                  <span
+                    className={cn(
+                      "mt-1 block text-[11px] leading-snug",
+                      active
+                        ? "text-primary-foreground/80"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {s.priceLabel}
+                  </span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </section>
+  )
+}
+
+function StepRoute({
+  pickup,
+  dropoff,
+  stops,
+  onPickup,
+  onDropoff,
+  onStops,
+}: {
+  pickup: string
+  dropoff: string
+  stops: string[]
+  onPickup: (v: string) => void
+  onDropoff: (v: string) => void
+  onStops: (v: string[]) => void
+}) {
+  function addStop() {
+    onStops([...stops, ""])
+  }
+  function updateStop(i: number, v: string) {
+    const next = [...stops]
+    next[i] = v
+    onStops(next)
+  }
+  function removeStop(i: number) {
+    onStops(stops.filter((_, idx) => idx !== i))
+  }
+
+  return (
+    <section>
+      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        Where to?
+      </h1>
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        Enter your pickup and drop off.
+      </p>
+
+      {/* Map */}
+      <div className="mt-4">
+        <RouteMap
+          variant="full"
+          pickupLabel={pickup || "Pickup location"}
+          dropoffLabel={dropoff || "Drop off location"}
+        />
+      </div>
+
+      {/* Inputs */}
+      <div className="mt-4 rounded-3xl border border-border bg-card p-3">
+        <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
+            <CircleDot className="h-4 w-4 text-primary" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Pickup
+            </span>
+            <input
+              value={pickup}
+              onChange={(e) => onPickup(e.target.value)}
+              placeholder="e.g. The Lookout Deck, Plett"
+              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
+            />
+          </span>
+        </label>
+
+        {stops.map((s, i) => (
+          <div key={i} className="mt-2 flex items-center gap-2">
+            <label className="flex flex-1 items-center gap-3 rounded-2xl bg-secondary p-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
+                <MapPin className="h-4 w-4 text-muted-foreground" />
+              </span>
+              <span className="flex-1">
+                <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                  Stop {i + 1}
+                </span>
+                <input
+                  value={s}
+                  onChange={(e) => updateStop(i, e.target.value)}
+                  placeholder="Add a stop"
+                  className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
+                />
+              </span>
+            </label>
+            <button
+              type="button"
+              onClick={() => removeStop(i)}
+              aria-label="Remove stop"
+              className="tap flex h-11 w-11 items-center justify-center rounded-2xl bg-secondary text-muted-foreground"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
-          <div className="mt-4 space-y-2 border-t border-border/70 pt-4 text-sm">
-            <SummaryRow label="Passengers" value={state.passengerCount} />
-            <SummaryRow
+        ))}
+
+        <label className="mt-2 flex items-center gap-3 rounded-2xl bg-secondary p-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
+            <MapPin className="h-4 w-4 text-accent-foreground" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Drop off
+            </span>
+            <input
+              value={dropoff}
+              onChange={(e) => onDropoff(e.target.value)}
+              placeholder="e.g. 14 Cormorant Drive"
+              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
+            />
+          </span>
+        </label>
+
+        <button
+          type="button"
+          onClick={addStop}
+          className="tap mt-3 inline-flex h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-[12px] font-semibold text-primary"
+        >
+          <Plus className="h-4 w-4" /> Add a stop
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function StepWhen({
+  date,
+  time,
+  passengers,
+  onDate,
+  onTime,
+  onPassengers,
+}: {
+  date: string
+  time: string
+  passengers: number
+  onDate: (v: string) => void
+  onTime: (v: string) => void
+  onPassengers: (v: number) => void
+}) {
+  return (
+    <section>
+      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        When do you need us?
+      </h1>
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        Schedule a pickup or ride as soon as possible.
+      </p>
+
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
+            <CalendarDays className="h-4 w-4 text-primary" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Date
+            </span>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => onDate(e.target.value)}
+              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none"
+            />
+          </span>
+        </label>
+        <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
+            <Clock className="h-4 w-4 text-primary" />
+          </span>
+          <span className="flex-1">
+            <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Time
+            </span>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => onTime(e.target.value)}
+              className="w-full bg-transparent py-0.5 text-[14px] font-medium outline-none"
+            />
+          </span>
+        </label>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-border bg-card p-4">
+        <div>
+          <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+            Passengers
+          </div>
+          <div className="mt-0.5 text-[18px] font-semibold tracking-tight">
+            {passengers}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => onPassengers(Math.max(1, passengers - 1))}
+            aria-label="Decrease passengers"
+            className="tap flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-foreground text-lg font-semibold"
+          >
+            −
+          </button>
+          <button
+            onClick={() => onPassengers(Math.min(8, passengers + 1))}
+            aria-label="Increase passengers"
+            className="tap flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground text-lg font-semibold"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-2xl bg-primary/5 p-4 text-[13px] leading-relaxed text-foreground ring-1 ring-primary/10">
+        <strong className="font-semibold">Heads up:</strong> evening pickups
+        after 22:00 include a small night surcharge.
+      </div>
+    </section>
+  )
+}
+
+function StepOptions({
+  state,
+  onChange,
+}: {
+  state: BookingState
+  onChange: (p: Partial<BookingState>) => void
+}) {
+  const toggles: {
+    key: keyof BookingState
+    icon: React.ElementType
+    title: string
+    body: string
+  }[] = [
+    {
+      key: "usesCustomerVehicle",
+      icon: Car,
+      title: "Use my own car",
+      body: "Our driver drives your vehicle. No ride-share vehicle arrives.",
+    },
+    {
+      key: "requiresFemaleDriver",
+      icon: UserCheck,
+      title: "Request a female driver",
+      body: "Subject to availability in your area.",
+    },
+    {
+      key: "childPickup",
+      icon: Baby,
+      title: "Child pickup",
+      body: "Authorised adult confirmation + WhatsApp alerts at pickup/drop off.",
+    },
+  ]
+
+  return (
+    <section>
+      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        Any preferences?
+      </h1>
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        Toggle what you need — we&apos;ll sort the rest.
+      </p>
+
+      <ul className="mt-5 flex flex-col gap-3">
+        {toggles.map((t) => {
+          const Icon = t.icon
+          const active = Boolean(state[t.key])
+          return (
+            <li key={String(t.key)}>
+              <button
+                type="button"
+                onClick={() => onChange({ [t.key]: !active } as Partial<BookingState>)}
+                className={cn(
+                  "tap flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition",
+                  active
+                    ? "border-primary bg-primary/5"
+                    : "border-border bg-card",
+                )}
+              >
+                <span
+                  className={cn(
+                    "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                    active ? "bg-primary text-primary-foreground" : "bg-primary/10 text-primary",
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="flex-1">
+                  <span className="block text-[15px] font-semibold tracking-tight">
+                    {t.title}
+                  </span>
+                  <span className="mt-0.5 block text-[13px] leading-relaxed text-muted-foreground">
+                    {t.body}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "relative mt-1 h-6 w-11 shrink-0 rounded-full transition",
+                    active ? "bg-primary" : "bg-secondary",
+                  )}
+                  aria-hidden
+                >
+                  <span
+                    className={cn(
+                      "absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition",
+                      active ? "left-5" : "left-0.5",
+                    )}
+                  />
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+
+      <label className="mt-4 flex flex-col gap-1 rounded-2xl border border-border bg-card p-4">
+        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          Notes for driver (optional)
+        </span>
+        <textarea
+          value={state.notes}
+          onChange={(e) => onChange({ notes: e.target.value })}
+          rows={3}
+          placeholder="e.g. Park on the left, silver BMW."
+          className="w-full resize-none bg-transparent text-[14px] outline-none placeholder:text-muted-foreground/70"
+        />
+      </label>
+
+      <div className="mt-4 flex items-start gap-2 rounded-2xl bg-primary/5 p-4 text-[13px] leading-relaxed ring-1 ring-primary/10">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <span>
+          You are booking a private driver who drives your own car.
+        </span>
+      </div>
+    </section>
+  )
+}
+
+function StepConfirm({
+  state,
+  onChange,
+  estimate,
+}: {
+  state: BookingState
+  onChange: (p: Partial<BookingState>) => void
+  estimate: {
+    distanceKm: number
+    durationMinutes: number
+    price: number
+    isNight: boolean
+    service: ReturnType<typeof getService>
+  }
+}) {
+  const { service } = estimate
+  return (
+    <section>
+      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+        Confirm &amp; book
+      </h1>
+      <p className="mt-1 text-[14px] text-muted-foreground">
+        Review your trip and add your details.
+      </p>
+
+      {/* Summary */}
+      <div className="mt-4 flex flex-col gap-3">
+        <div className="rounded-3xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Service
+            </span>
+            <span className="text-[13px] font-semibold">{service?.name}</span>
+          </div>
+          <div className="mt-3 h-px bg-border" />
+          <div className="mt-3 flex flex-col gap-2 text-[13px]">
+            <Row label="Pickup" value={state.pickup || "—"} />
+            {state.stops.filter(Boolean).map((s, i) => (
+              <Row key={i} label={`Stop ${i + 1}`} value={s} />
+            ))}
+            <Row label="Drop off" value={state.dropoff || "—"} />
+            <Row label="When" value={`${state.date} · ${state.time}`} />
+            <Row label="Passengers" value={String(state.passengers)} />
+            <Row
               label="Distance"
-              value={distanceKm ? `${distanceKm.toFixed(1)} km` : "—"}
+              value={`${estimate.distanceKm.toFixed(1)} km · ${estimate.durationMinutes} min`}
             />
-            <SummaryRow
-              label="Duration"
-              value={distanceKm ? `${durationMinutes} min` : "—"}
-            />
-            {isNight && <SummaryRow label="Night surcharge" value="Yes" />}
           </div>
-          <div className="mt-4 flex items-baseline justify-between border-t border-border/70 pt-4">
-            <span className="text-sm text-muted-foreground">Estimate</span>
-            <span className="font-serif text-2xl font-semibold text-primary">
-              {formatZAR(estimate)}
+        </div>
+
+        <div className="rounded-3xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="text-muted-foreground">Base fare</span>
+            <span className="font-medium">
+              {formatZAR(Math.round(estimate.price * 0.55))}
+            </span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-[13px]">
+            <span className="text-muted-foreground">
+              Distance ({estimate.distanceKm.toFixed(1)} km)
+            </span>
+            <span className="font-medium">
+              {formatZAR(Math.round(estimate.price * 0.4))}
+            </span>
+          </div>
+          {estimate.isNight && (
+            <div className="mt-1.5 flex items-center justify-between text-[13px]">
+              <span className="text-muted-foreground">Night surcharge</span>
+              <span className="font-medium">{formatZAR(80)}</span>
+            </div>
+          )}
+          <div className="mt-3 h-px bg-border" />
+          <div className="mt-3 flex items-end justify-between">
+            <span className="text-[13px] font-medium text-muted-foreground">
+              Estimated total
+            </span>
+            <span className="text-[22px] font-semibold tracking-tight">
+              {formatZAR(estimate.price)}
             </span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-secondary/40 p-5 text-sm">
-          <div className="flex items-start gap-3">
-            <ShieldCheck className="mt-0.5 size-5 flex-none text-primary" />
-            <div>
-              <p className="font-medium">Safe, local, private driver</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Vetted drivers, upfront pricing, and support via WhatsApp
-                whenever you need us.
-              </p>
-            </div>
+        {/* Contact */}
+        <div className="rounded-3xl border border-border bg-card p-4">
+          <h2 className="text-[15px] font-semibold">Your details</h2>
+          <div className="mt-3 grid grid-cols-1 gap-3">
+            <LineInput
+              label="Full name"
+              value={state.name}
+              onChange={(v) => onChange({ name: v })}
+              placeholder="Thandi Mokoena"
+            />
+            <LineInput
+              label="Mobile"
+              value={state.phone}
+              onChange={(v) => onChange({ phone: v })}
+              placeholder="+27 82 555 0101"
+              type="tel"
+            />
+            <LineInput
+              label="Email"
+              value={state.email}
+              onChange={(v) => onChange({ email: v })}
+              placeholder="you@email.co.za"
+              type="email"
+            />
           </div>
         </div>
-      </aside>
+
+        {/* Payment */}
+        <div className="rounded-3xl border border-border bg-card p-4">
+          <h2 className="text-[15px] font-semibold">Payment</h2>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {(["card", "eft", "cash"] as const).map((p) => {
+              const active = state.payment === p
+              return (
+                <button
+                  key={p}
+                  onClick={() => onChange({ payment: p })}
+                  className={cn(
+                    "tap flex h-11 items-center justify-center rounded-xl border text-[13px] font-semibold capitalize",
+                    active
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : "border-border bg-card text-foreground",
+                  )}
+                >
+                  {p === "card" ? "Card" : p === "eft" ? "EFT" : "Cash"}
+                </button>
+              )
+            })}
+          </div>
+          <p className="mt-3 text-[12px] leading-relaxed text-muted-foreground">
+            Card payment uses secure Stripe checkout. EFT and cash are
+            confirmed on pickup.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span className="text-right font-medium text-foreground">{value}</span>
     </div>
   )
 }
 
-function SummaryRow({
+function LineInput({
   label,
   value,
+  onChange,
+  placeholder,
+  type = "text",
 }: {
   label: string
-  value: React.ReactNode
+  value: string
+  onChange: (v: string) => void
+  placeholder?: string
+  type?: string
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
-    </div>
-  )
-}
-
-function Summary({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <label className="flex flex-col gap-0.5 rounded-2xl bg-secondary p-3">
+      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
         {label}
-      </dt>
-      <dd className="mt-0.5 text-sm font-medium text-foreground">{value}</dd>
-    </div>
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full bg-transparent text-[14px] font-medium outline-none placeholder:text-muted-foreground/70"
+      />
+    </label>
   )
-}
-
-function formatDate(value: string) {
-  try {
-    return new Date(value).toLocaleDateString("en-ZA", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    })
-  } catch {
-    return value
-  }
 }

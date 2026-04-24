@@ -1,25 +1,27 @@
-import { SiteHeader } from "@/components/site-header"
-import { SiteFooter } from "@/components/site-footer"
-import { Hero } from "@/components/landing/hero"
-import { TrustRow } from "@/components/landing/trust-row"
-import { ServicesGrid } from "@/components/landing/services-grid"
+import { MobileShell } from "@/components/mobile-shell"
+import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
+import { MobileHero } from "@/components/landing/mobile-hero"
+import { QuickBook } from "@/components/landing/quick-book"
+import { ServiceCarousel } from "@/components/landing/service-carousel"
 import { HowItWorks } from "@/components/landing/how-it-works"
+import { TrustStack } from "@/components/landing/trust-stack"
 import { Testimonials } from "@/components/landing/testimonials"
-import { FinalCta } from "@/components/landing/final-cta"
+import { LandingCta } from "@/components/landing/landing-cta"
 
 export default function HomePage() {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <SiteHeader />
-      <main className="flex-1">
-        <Hero />
-        <TrustRow />
-        <ServicesGrid />
+    <MobileShell>
+      <main>
+        <MobileHero />
+        <QuickBook />
+        <ServiceCarousel />
         <HowItWorks />
+        <TrustStack />
         <Testimonials />
-        <FinalCta />
+        <LandingCta />
+        <BottomNavSpacer />
       </main>
-      <SiteFooter />
-    </div>
+      <BottomNav />
+    </MobileShell>
   )
 }

@@ -3,7 +3,7 @@ import type { Booking } from "./types"
 export const mockBookings: Booking[] = [
   {
     id: "bk_001",
-    reference: "JK-4821",
+    reference: "IDU-4821",
     customerId: "cust_01",
     customerName: "Thandi Mokoena",
     customerPhone: "+27 82 555 0101",
@@ -37,7 +37,7 @@ export const mockBookings: Booking[] = [
   },
   {
     id: "bk_002",
-    reference: "JK-4822",
+    reference: "IDU-4822",
     customerId: "cust_02",
     customerName: "Pieter van der Merwe",
     customerPhone: "+27 83 555 0202",
@@ -73,7 +73,7 @@ export const mockBookings: Booking[] = [
   },
   {
     id: "bk_003",
-    reference: "JK-4823",
+    reference: "IDU-4823",
     customerId: "cust_03",
     customerName: "Lerato Dlamini",
     customerPhone: "+27 84 555 0303",
@@ -113,7 +113,7 @@ export const mockBookings: Booking[] = [
   },
   {
     id: "bk_004",
-    reference: "JK-4820",
+    reference: "IDU-4820",
     customerId: "cust_01",
     customerName: "Thandi Mokoena",
     serviceId: "airport",
@@ -140,7 +140,7 @@ export const mockBookings: Booking[] = [
   },
   {
     id: "bk_005",
-    reference: "JK-4819",
+    reference: "IDU-4819",
     customerId: "cust_04",
     customerName: "Sipho Nkosi",
     serviceId: "event-pickup",

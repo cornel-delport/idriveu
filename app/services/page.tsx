@@ -1,114 +1,122 @@
 import Link from "next/link"
 import { ArrowRight, Check } from "lucide-react"
-import { SiteHeader } from "@/components/site-header"
-import { SiteFooter } from "@/components/site-footer"
-import { Button } from "@/components/ui/button"
+import { MobileShell } from "@/components/mobile-shell"
+import { AppTopBar } from "@/components/app-top-bar"
+import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
 import { services } from "@/lib/services"
 
 export const metadata = {
-  title: "Services — John Khumalo Private Driver",
+  title: "Services — IDriveU",
   description:
-    "Drive me home, wine farm driver, airport transfers, event pickup, vehicle collection, parcel delivery, safe children pickup and tourist day driver in Plettenberg Bay.",
+    "All IDriveU services in Plettenberg Bay: Drive Me Home, Wine Farm Driver, Airport Transfers, Event Pickup, Vehicle Collection, Parcel & Errands, Safe Child Pickup, Tourist Day Driver.",
 }
 
 export default function ServicesPage() {
   return (
-    <div className="flex min-h-dvh flex-col">
-      <SiteHeader />
-      <main className="flex-1">
-        <section className="mx-auto w-full max-w-6xl px-4 pb-10 pt-12 md:px-6 md:pb-14 md:pt-20">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-accent">
-            Services
+    <MobileShell>
+      <AppTopBar title="Services" />
+      <main className="px-4 pt-4">
+        <section>
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">
+            What we do
           </p>
-          <h1 className="mt-2 max-w-3xl text-balance font-serif text-4xl font-semibold leading-tight md:text-5xl">
-            A trusted private driver for every Plett moment.
+          <h1 className="mt-1 text-balance text-[28px] font-semibold leading-tight tracking-tight">
+            Trusted private driver services in Plett.
           </h1>
-          <p className="mt-4 max-w-2xl text-pretty text-muted-foreground md:text-lg">
-            Pick a service below. All prices are starting quotes in South
-            African Rand — you&apos;ll see a firm estimate once you share your
-            pickup and dropoff.
+          <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
+            Pick the service you need — every trip is driven by a vetted,
+            friendly local.
           </p>
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4 pb-20 md:px-6">
-          <div className="grid gap-5 md:grid-cols-2">
-            {services.map((service) => (
+        <section className="mt-5 flex flex-col gap-3 pb-6">
+          {services.map((s) => {
+            const Icon = s.icon
+            return (
               <article
-                key={service.id}
-                id={service.id}
-                className="flex flex-col rounded-2xl border border-border bg-card p-6 md:p-7"
+                key={s.id}
+                id={s.id}
+                className="rounded-3xl border border-border bg-card p-4"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/15">
-                    <service.icon className="size-6" />
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h2 className="text-[17px] font-semibold tracking-tight">
+                        {s.name}
+                      </h2>
+                      <p className="mt-0.5 text-[12px] font-medium text-primary">
+                        {s.tagline}
+                      </p>
+                    </div>
                   </div>
-                  <span className="text-right text-sm font-semibold">
-                    {service.priceLabel}
-                  </span>
+                  {s.badge && (
+                    <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
+                      {s.badge}
+                    </span>
+                  )}
                 </div>
-                <h2 className="mt-5 font-serif text-2xl font-semibold">
-                  {service.name}
-                </h2>
-                <p className="mt-1 text-sm font-medium text-accent-foreground/80">
-                  {service.tagline}
+
+                <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+                  {s.longDescription}
                 </p>
-                <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-                  {service.longDescription}
-                </p>
-                <ul className="mt-5 grid gap-2 text-sm">
-                  {service.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2">
-                      <Check className="mt-0.5 size-4 flex-none text-primary" />
-                      <span className="text-foreground/90">{f}</span>
+
+                <ul className="mt-3 grid grid-cols-1 gap-1.5">
+                  {s.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-[13px]">
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+                      <span className="text-foreground">{f}</span>
                     </li>
                   ))}
                 </ul>
-                <div className="mt-6 flex items-center gap-3 border-t border-border/70 pt-5">
-                  <Button
-                    asChild
-                    className="flex-1 rounded-full"
-                    size="sm"
+
+                <div className="mt-4 flex items-center justify-between">
+                  <span className="text-[14px] font-semibold">
+                    {s.priceLabel}
+                  </span>
+                  <Link
+                    href={`/book?service=${s.id}`}
+                    className="tap inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
                   >
-                    <Link href={`/book?service=${service.id}`}>
-                      Book this service
-                      <ArrowRight className="size-4" />
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                  >
-                    <Link href="/contact">Ask a question</Link>
-                  </Button>
+                    Book <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
                 </div>
               </article>
-            ))}
-          </div>
+            )
+          })}
         </section>
 
-        <section className="mx-auto w-full max-w-6xl px-4 pb-20 md:px-6">
-          <div className="rounded-3xl border border-border bg-secondary/40 p-8 md:p-12">
-            <h3 className="max-w-xl font-serif text-2xl font-semibold md:text-3xl">
+        <section className="pb-6">
+          <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground">
+            <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-accent/25 blur-3xl" />
+            <h3 className="relative text-[20px] font-semibold leading-tight tracking-tight">
               Need something custom?
             </h3>
-            <p className="mt-3 max-w-xl text-muted-foreground">
-              Corporate accounts, multi-day itineraries, weddings, matric dances
-              and tour groups — we&apos;ll build a quote around your plans.
+            <p className="relative mt-1.5 text-[13px] leading-relaxed text-primary-foreground/80">
+              Weddings, tour groups, corporate accounts, matric dances — we
+              build quotes around your plans.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button asChild className="rounded-full">
-                <Link href="/contact">Get a custom quote</Link>
-              </Button>
-              <Button asChild variant="outline" className="rounded-full">
-                <Link href="/book">Book a standard trip</Link>
-              </Button>
+            <div className="relative mt-4 flex gap-2">
+              <Link
+                href="/contact"
+                className="tap inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-[13px] font-semibold text-accent-foreground"
+              >
+                Get a quote
+              </Link>
+              <Link
+                href="/book"
+                className="tap inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-primary-foreground/10 text-[13px] font-semibold text-primary-foreground ring-1 ring-primary-foreground/20"
+              >
+                Book a trip
+              </Link>
             </div>
           </div>
         </section>
+        <BottomNavSpacer />
       </main>
-      <SiteFooter />
-    </div>
+      <BottomNav />
+    </MobileShell>
   )
 }

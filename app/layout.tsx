@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next"
-import { Inter, Playfair_Display } from "next/font/google"
+import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
@@ -10,30 +10,26 @@ const inter = Inter({
   display: "swap",
 })
 
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-playfair",
-  display: "swap",
-})
-
 export const metadata: Metadata = {
-  title: "John Khumalo Private Driver Services — Plettenberg Bay",
+  title: "IDriveU — Your car. Your plans. We get you home safely.",
   description:
-    "Your car. Your plans. John gets you home safely. Trusted private driver, wine farm, airport transfer, and family pickup service in Plettenberg Bay.",
+    "Book a trusted private driver in Plettenberg Bay. IDriveU drives you home in your own car — airport transfers, wine farms, event pickups, and safe child transport.",
   generator: "v0.app",
+  applicationName: "IDriveU",
   keywords: [
-    "Plettenberg Bay driver",
-    "private driver",
+    "IDriveU",
+    "Plettenberg Bay private driver",
     "drive me home",
     "wine farm driver",
     "airport transfer Plett",
     "George airport transfer",
-    "chauffeur South Africa",
+    "private chauffeur Garden Route",
+    "safe child pickup",
   ],
   openGraph: {
-    title: "John Khumalo Private Driver Services",
+    title: "IDriveU — Private Driver App",
     description:
-      "Your car. Your plans. John gets you home safely. Private driver, wine farm, airport transfer and family pickup in Plettenberg Bay.",
+      "Your car. Your plans. IDriveU gets you home safely. Private driver, wine farm, airport transfer and family pickup in Plettenberg Bay.",
     type: "website",
     locale: "en_ZA",
   },
@@ -41,11 +37,14 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf6ef" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f1b22" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f8fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1222" },
   ],
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 }
 
 export default function RootLayout({
@@ -54,11 +53,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${inter.variable} ${playfair.variable} bg-background`}
-    >
-      <body className="font-sans antialiased">
+    <html lang="en" className={`${inter.variable} bg-background`}>
+      <body className="font-sans antialiased min-h-dvh">
         {children}
         <Toaster position="top-center" richColors />
         {process.env.NODE_ENV === "production" && <Analytics />}

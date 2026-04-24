@@ -1,36 +1,15 @@
 import Link from "next/link"
-import {
-  BadgeDollarSign,
-  BarChart3,
-  CalendarRange,
-  Car,
-  Download,
-  Filter,
-  LayoutDashboard,
-  Settings,
-  UserCog,
-  Users,
-} from "lucide-react"
-import { DashboardShell } from "@/components/dashboard/dashboard-shell"
+import { ArrowUpRight, Filter, Search, UserCog } from "lucide-react"
+import { MobileShell } from "@/components/mobile-shell"
+import { AppTopBar } from "@/components/app-top-bar"
+import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
 import {
   BookingStatusBadge,
   PaymentStatusBadge,
 } from "@/components/status-badge"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { mockBookings, mockDrivers } from "@/lib/mock-data"
 import { getService } from "@/lib/services"
 import { formatZAR } from "@/lib/pricing"
-
-const nav = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/bookings", label: "Bookings", icon: CalendarRange },
-  { href: "/admin/customers", label: "Customers", icon: Users },
-  { href: "/admin/drivers", label: "Drivers", icon: Car },
-  { href: "/admin/pricing", label: "Pricing", icon: BadgeDollarSign },
-  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
-  { href: "/admin/settings", label: "Settings", icon: Settings },
-]
 
 export default function AdminDashboard() {
   const revenue = mockBookings
@@ -44,192 +23,184 @@ export default function AdminDashboard() {
   )
 
   return (
-    <DashboardShell
-      role="admin"
-      nav={nav}
-      user={{ name: "John Khumalo", email: "admin@johnkhumalo.co.za" }}
-      title="Business overview"
-      description="Bookings, payments and drivers at a glance."
-    >
-      <div className="grid gap-4 md:grid-cols-4">
-        <StatCard
-          label="Revenue (30d)"
-          value={formatZAR(revenue)}
-          trend="+12.4%"
-        />
-        <StatCard
-          label="Bookings"
-          value={String(mockBookings.length)}
-          trend="+5"
-        />
-        <StatCard
-          label="Upcoming"
-          value={String(upcoming.length)}
-        />
-        <StatCard
-          label="Awaiting payment"
-          value={String(pendingPayments)}
-          tone="accent"
-        />
-      </div>
+    <MobileShell>
+      <AppTopBar title="Admin" />
+      <main className="px-4 pt-2">
+        <section>
+          <p className="text-[12px] font-medium text-muted-foreground">
+            Overview
+          </p>
+          <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
+            Business at a glance
+          </h1>
+        </section>
 
-      <section className="mt-10">
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h2 className="font-serif text-xl font-semibold">All bookings</h2>
-            <p className="text-sm text-muted-foreground">
-              Approve, assign drivers, and manage payments.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative">
-              <Input
-                placeholder="Search reference, customer..."
-                className="h-9 w-56 rounded-full pl-3"
-              />
-            </div>
-            <Button variant="outline" size="sm" className="rounded-full">
-              <Filter className="size-4" /> Filters
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-full">
-              <Download className="size-4" /> Export CSV
-            </Button>
-          </div>
-        </div>
+        {/* Stats */}
+        <section className="mt-4 grid grid-cols-2 gap-2">
+          <StatCard label="Revenue (30d)" value={formatZAR(revenue)} trend="+12.4%" />
+          <StatCard label="Bookings" value={String(mockBookings.length)} trend="+5" />
+          <StatCard label="Upcoming" value={String(upcoming.length)} />
+          <StatCard
+            label="Awaiting payment"
+            value={String(pendingPayments)}
+            tone="accent"
+          />
+        </section>
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-border bg-card">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[780px] text-sm">
-              <thead className="bg-secondary/50 text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-5 py-3 font-medium">Reference</th>
-                  <th className="px-5 py-3 font-medium">Service</th>
-                  <th className="px-5 py-3 font-medium">Customer</th>
-                  <th className="px-5 py-3 font-medium">When</th>
-                  <th className="px-5 py-3 font-medium">Driver</th>
-                  <th className="px-5 py-3 font-medium">Amount</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                  <th className="px-5 py-3 font-medium">Payment</th>
-                  <th className="w-8 px-5 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {mockBookings.map((b) => {
-                  const s = getService(b.serviceId)
-                  return (
-                    <tr key={b.id} className="hover:bg-secondary/30">
-                      <td className="px-5 py-3 font-medium">{b.reference}</td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          {s && (
-                            <s.icon className="size-4 text-muted-foreground" />
-                          )}
-                          <span>{s?.shortName}</span>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3">{b.customerName}</td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        {new Date(b.dateTime).toLocaleString("en-ZA", {
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </td>
-                      <td className="px-5 py-3 text-muted-foreground">
-                        {b.driverName ?? "—"}
-                      </td>
-                      <td className="px-5 py-3 font-medium">
-                        {formatZAR(b.finalPrice ?? b.estimatedPrice)}
-                      </td>
-                      <td className="px-5 py-3">
-                        <BookingStatusBadge status={b.status} />
-                      </td>
-                      <td className="px-5 py-3">
-                        <PaymentStatusBadge status={b.paymentStatus} />
-                      </td>
-                      <td className="px-5 py-3">
-                        <Link
-                          href={`/admin/bookings/${b.id}`}
-                          className="text-xs font-medium text-primary hover:underline"
-                        >
-                          Manage
-                        </Link>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
+        {/* Filter bar */}
+        <section className="mt-5">
+          <div className="flex items-center gap-2 rounded-2xl bg-secondary p-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-card ring-1 ring-border">
+              <Search className="h-4 w-4 text-muted-foreground" />
+            </span>
+            <input
+              placeholder="Search reference, customer…"
+              className="flex-1 bg-transparent text-[13px] font-medium outline-none placeholder:text-muted-foreground/70"
+            />
+            <button
+              type="button"
+              className="tap inline-flex h-9 items-center gap-1 rounded-xl bg-card px-3 text-[12px] font-semibold ring-1 ring-border"
+            >
+              <Filter className="h-3.5 w-3.5" /> Filters
+            </button>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="mt-10 grid gap-4 md:grid-cols-[1.3fr_1fr]">
-        <div className="rounded-2xl border border-border bg-card p-6">
+        {/* Bookings feed */}
+        <section className="mt-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-serif text-lg font-semibold">
+            <h2 className="text-[17px] font-semibold tracking-tight">
+              Bookings
+            </h2>
+            <Link href="#" className="text-[12px] font-medium text-primary">
+              Export CSV
+            </Link>
+          </div>
+          <ul className="mt-3 flex flex-col gap-3">
+            {mockBookings.map((b) => {
+              const s = getService(b.serviceId)
+              const Icon = s?.icon
+              return (
+                <li key={b.id}>
+                  <Link
+                    href={`/admin/bookings/${b.id}`}
+                    className="flex items-start gap-3 rounded-3xl border border-border bg-card p-4 active:bg-secondary/60"
+                  >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                      {Icon && <Icon className="h-5 w-5" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-[14px] font-semibold">
+                            {s?.shortName} · {b.reference}
+                          </p>
+                          <p className="truncate text-[12px] text-muted-foreground">
+                            {b.customerName} ·{" "}
+                            {new Date(b.dateTime).toLocaleString("en-ZA", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[14px] font-semibold">
+                            {formatZAR(b.finalPrice ?? b.estimatedPrice)}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {b.driverName ?? "Unassigned"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                        <BookingStatusBadge status={b.status} />
+                        <PaymentStatusBadge status={b.paymentStatus} />
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+
+        {/* Revenue by service */}
+        <section className="mt-6 rounded-3xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[15px] font-semibold tracking-tight">
               Revenue by service
             </h3>
-            <span className="text-xs text-muted-foreground">last 30 days</span>
+            <span className="text-[11px] text-muted-foreground">last 30d</span>
           </div>
-          <div className="mt-6 space-y-4">
+          <ul className="mt-3 flex flex-col gap-3">
             {serviceRevenue(mockBookings).map((row) => (
-              <div key={row.id}>
-                <div className="flex items-center justify-between text-sm">
+              <li key={row.id}>
+                <div className="flex items-center justify-between text-[13px]">
                   <span className="font-medium">{row.name}</span>
                   <span className="text-muted-foreground">
                     {formatZAR(row.amount)}
                   </span>
                 </div>
-                <div className="mt-2 h-2 rounded-full bg-secondary">
+                <div className="mt-1.5 h-2 rounded-full bg-secondary">
                   <div
                     className="h-2 rounded-full bg-primary"
                     style={{ width: `${row.pct}%` }}
                   />
                 </div>
-              </div>
+              </li>
             ))}
-          </div>
-        </div>
+          </ul>
+        </section>
 
-        <div className="rounded-2xl border border-border bg-card p-6">
+        {/* Drivers */}
+        <section className="mt-4 rounded-3xl border border-border bg-card p-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-serif text-lg font-semibold">Drivers</h3>
-            <Button size="sm" variant="ghost" className="rounded-full">
-              <UserCog className="size-4" /> Manage
-            </Button>
+            <h3 className="text-[15px] font-semibold tracking-tight">Drivers</h3>
+            <Link
+              href="#"
+              className="tap inline-flex h-8 items-center gap-1 rounded-full bg-secondary px-3 text-[11px] font-semibold"
+            >
+              <UserCog className="h-3.5 w-3.5" /> Manage
+            </Link>
           </div>
-          <ul className="mt-4 space-y-3">
+          <ul className="mt-3 flex flex-col gap-2">
             {mockDrivers.map((d) => (
               <li
                 key={d.id}
-                className="flex items-center gap-3 rounded-xl bg-secondary/50 p-3"
+                className="flex items-center gap-3 rounded-2xl bg-secondary p-3"
               >
-                <div className="flex size-10 flex-none items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                <div className="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
                   {d.name
                     .split(" ")
                     .map((p) => p[0])
                     .join("")}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium">{d.name}</p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  <p className="truncate text-[13px] font-semibold">
+                    {d.name}
+                  </p>
+                  <p className="truncate text-[11px] text-muted-foreground">
                     {d.trips} trips · {d.rating}★ ·{" "}
                     {d.verified ? "Verified" : "Pending"}
                   </p>
                 </div>
                 {d.female && (
-                  <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground ring-1 ring-accent/30">
+                  <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
                     Lady driver
                   </span>
                 )}
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
               </li>
             ))}
           </ul>
-        </div>
-      </section>
-    </DashboardShell>
+        </section>
+
+        <BottomNavSpacer />
+      </main>
+      <BottomNav />
+    </MobileShell>
   )
 }
 
@@ -242,26 +213,22 @@ function StatCard({
   label: string
   value: string
   trend?: string
-  tone?: "primary" | "accent"
+  tone?: "accent"
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-5">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl border border-border bg-card p-4">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p
-        className={`mt-2 font-serif text-2xl font-semibold ${
-          tone === "accent"
-            ? "text-accent-foreground"
-            : tone === "primary"
-              ? "text-primary"
-              : "text-foreground"
+        className={`mt-1 text-[20px] font-semibold tracking-tight ${
+          tone === "accent" ? "text-accent-foreground" : "text-foreground"
         }`}
       >
         {value}
       </p>
       {trend && (
-        <p className="mt-1 text-xs font-medium text-primary">{trend}</p>
+        <p className="mt-0.5 text-[11px] font-medium text-primary">{trend}</p>
       )}
     </div>
   )

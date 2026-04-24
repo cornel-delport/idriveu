@@ -41,9 +41,9 @@ export const services: Service[] = [
     shortName: "Drive Home",
     tagline: "Enjoy your night. We get you home.",
     description:
-      "After dinner, drinks, a wedding or a braai — John drives you home safely in your own car.",
+      "After dinner, drinks, a wedding or a braai — we drive you home safely in your own car.",
     longDescription:
-      "Had a glass of wine too many? Don't risk it. Call John from the restaurant, pub, wedding or event and he'll meet you there and drive you home in your own vehicle. Safe, discreet, and local to Plett.",
+      "Had a glass of wine too many? Don't risk it. Book IDriveU from the restaurant, pub, wedding or event and a trusted local driver will meet you there and drive you home in your own vehicle. Safe, discreet, and local to Plett.",
     icon: Moon,
     fromPrice: 250,
     priceLabel: "from R250",
@@ -61,9 +61,9 @@ export const services: Service[] = [
     shortName: "Wine Farm",
     tagline: "Taste freely. We'll do the driving.",
     description:
-      "Spend the day at the wine farms — John drives, waits, and takes you home safely.",
+      "Spend the day at the wine farms — we drive, wait, and take you home safely.",
     longDescription:
-      "A dedicated driver for your wine tasting day around Plett, Knysna and the Garden Route. Half-day and full-day options, with patient waiting time included.",
+      "A dedicated IDriveU driver for your wine tasting day around Plett, Knysna and the Garden Route. Half-day and full-day options, with patient waiting time included.",
     icon: Wine,
     fromPrice: 950,
     priceLabel: "from R950",

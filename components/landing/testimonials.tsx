@@ -1,57 +1,60 @@
 import { Star } from "lucide-react"
 
-const reviews = [
+const items = [
   {
-    name: "Sarah M.",
-    location: "Keurboomstrand",
+    name: "Thandi M.",
+    trip: "Drive Me Home, Lookout Deck",
     quote:
-      "John drove us home in our own car after a wedding in the hills. Professional, friendly and on time. Exactly what Plett needed.",
+      "Booked from the restaurant, driver was waiting in 20 minutes, drove us home in our own car. Completely seamless.",
+    rating: 5,
   },
   {
-    name: "Graham T.",
-    location: "Visitor from Joburg",
+    name: "Pieter v.d.M.",
+    trip: "Wine Farm day, Bramon",
     quote:
-      "Spent the day at four wine farms with John driving. Didn't worry once about who's the designated driver. Worth every rand.",
+      "Three farms, zero stress. Friendly, patient, punctual. We&apos;ll use IDriveU every time we visit Plett.",
+    rating: 5,
   },
   {
-    name: "Nomvula K.",
-    location: "Plettenberg Bay",
+    name: "Lerato D.",
+    trip: "School pickup",
     quote:
-      "Junior collects my daughter from school twice a week. I get a WhatsApp the moment she's in the car. Total peace of mind.",
+      "Requested a lady driver and got WhatsApp photos at pickup and drop-off. Total peace of mind.",
+    rating: 5,
   },
-]
+] as const
 
 export function Testimonials() {
   return (
-    <section className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6">
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.18em] text-accent">
-          Trusted by locals
-        </p>
-        <h2 className="mt-2 text-balance font-serif text-3xl font-semibold md:text-4xl">
-          What Plett says about us.
+    <section className="pt-10">
+      <div className="px-4">
+        <h2 className="text-[20px] font-semibold tracking-tight">
+          Loved by locals &amp; visitors
         </h2>
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          Real trips. Real people. Real reviews.
+        </p>
       </div>
-      <div className="mt-12 grid gap-5 md:grid-cols-3">
-        {reviews.map((r) => (
+
+      <div className="mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto no-scrollbar px-4 pb-2">
+        {items.map((t) => (
           <figure
-            key={r.name}
-            className="flex h-full flex-col rounded-2xl border border-border bg-card p-6"
+            key={t.name}
+            className="snap-start shrink-0 basis-[85%] rounded-3xl border border-border bg-card p-4"
           >
-            <div
-              className="flex items-center gap-0.5 text-accent"
-              aria-label="5 out of 5 stars"
-            >
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Star key={i} className="size-4 fill-accent" />
+            <div className="flex items-center gap-1 text-accent">
+              {Array.from({ length: t.rating }).map((_, i) => (
+                <Star key={i} className="h-3.5 w-3.5 fill-current" />
               ))}
             </div>
-            <blockquote className="mt-4 flex-1 text-pretty text-sm leading-relaxed text-foreground/90">
-              &ldquo;{r.quote}&rdquo;
+            <blockquote className="mt-2 text-[14px] leading-relaxed text-foreground">
+              &ldquo;{t.quote}&rdquo;
             </blockquote>
-            <figcaption className="mt-5 border-t border-border/60 pt-4 text-sm">
-              <span className="font-semibold text-foreground">{r.name}</span>
-              <span className="text-muted-foreground"> · {r.location}</span>
+            <figcaption className="mt-3 flex items-center justify-between border-t border-border pt-3">
+              <span className="text-[13px] font-semibold">{t.name}</span>
+              <span className="text-[11px] text-muted-foreground">
+                {t.trip}
+              </span>
             </figcaption>
           </figure>
         ))}

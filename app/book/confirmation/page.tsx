@@ -8,13 +8,13 @@ import {
   MessageCircle,
   Phone,
 } from "lucide-react"
-import { SiteHeader } from "@/components/site-header"
-import { SiteFooter } from "@/components/site-footer"
-import { Button } from "@/components/ui/button"
+import { MobileShell } from "@/components/mobile-shell"
+import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
+import { AppTopBar } from "@/components/app-top-bar"
 import { formatZAR } from "@/lib/pricing"
 
 export const metadata = {
-  title: "Booking confirmed — John Khumalo Private Driver",
+  title: "Booking confirmed — IDriveU",
 }
 
 export default async function ConfirmationPage({
@@ -23,120 +23,124 @@ export default async function ConfirmationPage({
   searchParams: Promise<Record<string, string | undefined>>
 }) {
   const params = await searchParams
-  const ref = params.ref ?? "JK-0000"
+  const ref = params.ref ?? "IDU-0000"
   const service = params.service ?? "Private driver"
   const date = params.date ?? ""
   const time = params.time ?? ""
   const pickup = params.pickup ?? ""
   const dropoff = params.dropoff ?? ""
   const price = Number(params.price ?? "0")
+  const distance = Number(params.distance ?? "0")
+  const duration = Number(params.duration ?? "0")
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      <SiteHeader />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-14 md:px-6 md:py-20">
-        <div className="flex flex-col items-center text-center">
-          <div className="flex size-16 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/20">
-            <CheckCircle2 className="size-8" />
+    <MobileShell>
+      <AppTopBar title="Booking received" />
+      <main className="px-4 pt-4">
+        {/* Success card */}
+        <section className="relative overflow-hidden rounded-3xl bg-primary p-6 text-primary-foreground">
+          <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-accent/30 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -left-8 h-48 w-48 rounded-full bg-primary-foreground/10 blur-3xl" />
+          <div className="relative flex flex-col items-center text-center">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-lg shadow-primary-foreground/10">
+              <CheckCircle2 className="h-7 w-7" />
+            </span>
+            <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+              Request received
+            </p>
+            <h1 className="mt-1 text-balance text-[26px] font-semibold leading-tight tracking-tight">
+              You&apos;re sorted. We&apos;re assigning your driver.
+            </h1>
+            <p className="mt-2 text-pretty text-[13px] leading-relaxed text-primary-foreground/80">
+              Reference{" "}
+              <span className="font-semibold text-accent">{ref}</span> — we&apos;ll
+              confirm on WhatsApp shortly.
+            </p>
           </div>
-          <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-            Booking received
-          </p>
-          <h1 className="mt-2 text-balance font-serif text-3xl font-semibold md:text-4xl">
-            Thanks — we&apos;ll see you soon.
-          </h1>
-          <p className="mt-3 max-w-xl text-pretty text-muted-foreground">
-            John has received your request and will confirm shortly via
-            WhatsApp. Your reference is{" "}
-            <span className="font-semibold text-foreground">{ref}</span>.
-          </p>
-        </div>
+        </section>
 
-        <div className="mt-10 rounded-2xl border border-border bg-card p-6 md:p-8">
-          <div className="flex items-start justify-between gap-4 border-b border-border/70 pb-5">
+        {/* Summary */}
+        <section className="mt-4 rounded-3xl border border-border bg-card p-4">
+          <div className="flex items-start justify-between border-b border-border/70 pb-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {service}
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {labelForService(service)}
               </p>
-              <p className="mt-1 font-serif text-lg font-semibold">
+              <p className="mt-1 text-[15px] font-semibold">
                 {formatDate(date)} · {time}
               </p>
             </div>
             <div className="text-right">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground">
                 Total
               </p>
-              <p className="font-serif text-2xl font-semibold text-primary">
+              <p className="text-[22px] font-semibold tracking-tight text-primary">
                 {formatZAR(price)}
               </p>
             </div>
           </div>
 
-          <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-            <InfoRow
-              icon={<MapPin className="size-4" />}
-              label="Pickup"
-              value={pickup}
-            />
-            <InfoRow
-              icon={<MapPin className="size-4" />}
-              label="Dropoff"
-              value={dropoff}
-            />
-            <InfoRow
-              icon={<CalendarClock className="size-4" />}
+          <ul className="mt-3 flex flex-col gap-3">
+            <Info icon={<MapPin className="h-4 w-4" />} label="Pickup" value={pickup} />
+            <Info icon={<MapPin className="h-4 w-4 text-accent-foreground" />} label="Drop off" value={dropoff} />
+            <Info
+              icon={<CalendarClock className="h-4 w-4" />}
               label="When"
               value={`${formatDate(date)} · ${time}`}
             />
-            <InfoRow
-              icon={<Car className="size-4" />}
-              label="Driver"
-              value="John Khumalo (confirming)"
+            <Info
+              icon={<Car className="h-4 w-4" />}
+              label="Trip"
+              value={
+                distance && duration
+                  ? `${distance.toFixed(1)} km · ${duration} min`
+                  : "Calculating"
+              }
             />
-          </dl>
-        </div>
+          </ul>
+        </section>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="rounded-full"
+        {/* Contact actions */}
+        <section className="mt-3 grid grid-cols-2 gap-2.5">
+          <a
+            href={`https://wa.me/27821234567?text=Hi%20IDriveU%2C%20booking%20${ref}`}
+            target="_blank"
+            rel="noreferrer"
+            className="tap inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-[13px] font-semibold"
           >
-            <a
-              href={`https://wa.me/27821234567?text=Hi%20John%2C%20booking%20${ref}`}
-              target="_blank"
-              rel="noreferrer"
-            >
-              <MessageCircle className="size-4" />
-              Message on WhatsApp
-            </a>
-          </Button>
-          <Button asChild variant="outline" size="lg" className="rounded-full">
-            <a href="tel:+27821234567">
-              <Phone className="size-4" />
-              Call 082 123 4567
-            </a>
-          </Button>
-        </div>
+            <MessageCircle className="h-4 w-4" /> WhatsApp
+          </a>
+          <a
+            href="tel:+27821234567"
+            className="tap inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-[13px] font-semibold"
+          >
+            <Phone className="h-4 w-4" /> Call driver
+          </a>
+        </section>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-3 text-sm">
-          <Button asChild className="rounded-full">
-            <Link href="/dashboard">
-              View my trips <ArrowRight className="size-4" />
-            </Link>
-          </Button>
-          <Button asChild variant="ghost" className="rounded-full">
-            <Link href="/">Back home</Link>
-          </Button>
-        </div>
+        <section className="mt-4 flex flex-col gap-2">
+          <Link
+            href="/dashboard"
+            className="tap inline-flex h-12 items-center justify-between rounded-2xl bg-primary px-5 text-[14px] font-semibold text-primary-foreground shadow-md"
+          >
+            <span>View my trips</span>
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link
+            href="/"
+            className="tap inline-flex h-11 items-center justify-center rounded-2xl bg-secondary text-[13px] font-semibold text-foreground"
+          >
+            Back home
+          </Link>
+        </section>
+        <BottomNavSpacer />
       </main>
-      <SiteFooter />
-    </div>
+      <BottomNav />
+    </MobileShell>
   )
 }
 
-function InfoRow({
+function Info({
   icon,
   label,
   value,
@@ -146,19 +150,19 @@ function InfoRow({
   value: string
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="flex size-8 flex-none items-center justify-center rounded-lg bg-primary/10 text-primary">
+    <li className="flex items-start gap-3">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
         {icon}
-      </div>
-      <div>
-        <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+      </span>
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {label}
-        </dt>
-        <dd className="mt-0.5 text-sm font-medium text-foreground">
+        </p>
+        <p className="mt-0.5 truncate text-[14px] font-medium text-foreground">
           {value || "—"}
-        </dd>
+        </p>
       </div>
-    </div>
+    </li>
   )
 }
 
@@ -174,4 +178,18 @@ function formatDate(value: string) {
   } catch {
     return value
   }
+}
+
+function labelForService(id: string) {
+  const map: Record<string, string> = {
+    "drive-me-home": "Drive Me Home",
+    "wine-farm": "Wine Farm Driver",
+    airport: "Airport Transfer",
+    "event-pickup": "Event Pickup",
+    "vehicle-collection": "Vehicle Collection",
+    parcel: "Parcel & Errands",
+    "child-pickup": "Safe Children Pickup",
+    tourist: "Tourist Day Driver",
+  }
+  return map[id] ?? id
 }
