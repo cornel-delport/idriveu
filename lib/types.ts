@@ -19,6 +19,7 @@ export type PaymentStatus =
   | "paid"
   | "failed"
   | "refunded"
+  | "refund_requested"
   | "cash_requested"
   | "eft_requested"
   | "admin_confirmed"

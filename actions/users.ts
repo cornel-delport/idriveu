@@ -13,12 +13,20 @@ export async function updateProfile(data: {
   const session = await auth()
   if (!session?.user?.id) return { error: 'Unauthorized' }
 
+  const schema = z.object({
+    name: z.string().min(1).optional(),
+    phone: z.string().regex(/^\+?[0-9]{9,15}$/).optional(),
+    avatar: z.string().url().optional(),
+  })
+  const parsed = schema.safeParse(data)
+  if (!parsed.success) return { error: parsed.error.errors[0]?.message ?? 'Invalid data' }
+
   await db.user.update({
     where: { id: session.user.id },
     data: {
-      ...(data.name && { name: data.name }),
-      ...(data.phone && { phone: data.phone }),
-      ...(data.avatar && { avatar: data.avatar }),
+      ...(parsed.data.name && { name: parsed.data.name }),
+      ...(parsed.data.phone && { phone: parsed.data.phone }),
+      ...(parsed.data.avatar && { avatar: parsed.data.avatar }),
     },
   })
 
@@ -83,6 +91,9 @@ export async function submitReview(data: {
   if (booking.customerId !== session.user.id) return { error: 'Unauthorized' }
   if (booking.status !== 'completed') return { error: 'Can only review completed trips' }
   if (!booking.driverId) return { error: 'No driver assigned' }
+
+  const existing = await db.review.findUnique({ where: { bookingId: data.bookingId } })
+  if (existing) return { error: 'You have already reviewed this trip.' }
 
   const schema = z.object({ rating: z.number().min(1).max(5), comment: z.string().optional() })
   const parsed = schema.safeParse({ rating: data.rating, comment: data.comment })
