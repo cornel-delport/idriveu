@@ -115,6 +115,7 @@ export default function SignupPage() {
                 id="su-phone"
                 type="tel"
                 inputMode="tel"
+                autoComplete="tel"
                 placeholder="+27 82 123 4567"
                 className="h-12 text-base"
                 value={phone}

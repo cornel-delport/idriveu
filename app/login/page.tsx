@@ -64,7 +64,7 @@ export default function LoginPage() {
         <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
           <FieldGroup className="gap-5">
             <Field>
-              <FieldLabel htmlFor="login-email">Email or phone</FieldLabel>
+              <FieldLabel htmlFor="login-email">Email address</FieldLabel>
               <Input
                 id="login-email"
                 type="text"
