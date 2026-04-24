@@ -5,6 +5,7 @@ import { LiveTripMap } from "@/components/trip/live-trip-map"
 import { TripStatusSheet } from "@/components/trip/trip-status-sheet"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import type { BookingStatus } from "@/lib/types"
 
 export default async function TripTrackingPage({
   params,
@@ -48,7 +49,7 @@ export default async function TripTrackingPage({
       <div className="flex-1">
         <LiveTripMap
           bookingId={booking.id}
-          status={booking.status as import("@/lib/types").BookingStatus}
+          status={booking.status as BookingStatus}
           pickupLat={booking.pickupLat ?? undefined}
           pickupLng={booking.pickupLng ?? undefined}
           dropoffLat={booking.dropoffLat ?? undefined}
@@ -61,7 +62,7 @@ export default async function TripTrackingPage({
       {/* Bottom status sheet */}
       <div className="absolute inset-x-0 bottom-0 z-30">
         <TripStatusSheet
-          status={booking.status as import("@/lib/types").BookingStatus}
+          status={booking.status as BookingStatus}
           driverName={booking.driver?.name}
           driverPhone={booking.driver?.phone}
           pickupAddress={booking.pickupAddress}

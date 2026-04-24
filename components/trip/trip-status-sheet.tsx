@@ -27,11 +27,19 @@ const STATUS_CONFIG: Record<
   driver_on_the_way: { title: "Driver on the way",    body: "Your driver is heading to your pickup.",   icon: Car },
   arrived:           { title: "Driver has arrived",   body: "Your driver is waiting at your pickup.",   icon: MapPin },
   in_progress:       { title: "Trip in progress",     body: "On the way to your destination.",          icon: Car },
-  completed:         { title: "Trip complete",        body: "You've arrived at your destination. 🎉",   icon: CheckCircle2 },
+  completed:         { title: "Trip complete",        body: "You've arrived at your destination.",      icon: CheckCircle2 },
   cancelled:         { title: "Booking cancelled",    body: "This booking has been cancelled.",         icon: AlertCircle },
   refund_requested:  { title: "Refund requested",     body: "Your refund is being processed.",          icon: Clock },
   refunded:          { title: "Refund complete",      body: "Your refund has been issued.",             icon: CheckCircle2 },
 }
+
+const DRIVER_VISIBLE_STATUSES: BookingStatus[] = [
+  "driver_assigned",
+  "driver_on_the_way",
+  "arrived",
+  "in_progress",
+  "completed",
+]
 
 export function TripStatusSheet({
   status,
@@ -45,7 +53,7 @@ export function TripStatusSheet({
 }: TripStatusSheetProps) {
   const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.confirmed
   const StatusIcon = config.icon
-  const showDriver = Boolean(driverName) && !["draft","pending_payment","payment_received","confirmed","cancelled","refund_requested","refunded"].includes(status)
+  const showDriver = Boolean(driverName) && DRIVER_VISIBLE_STATUSES.includes(status)
   const showCancel = Boolean(onCancel) && ["confirmed","driver_assigned","driver_on_the_way"].includes(status)
 
   return (
