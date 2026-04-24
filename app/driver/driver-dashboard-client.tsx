@@ -326,7 +326,6 @@ function TripProgress({ booking }: { booking: SerializedBooking }) {
         {TRIP_STEPS.map((step, i) => {
           const isDone = i < currentStepIndex || booking.status === 'completed'
           const isActive = step.status === booking.status && booking.status !== 'completed'
-          const isFuture = i > currentStepIndex && booking.status !== 'completed'
 
           return (
             <li key={step.status} className="flex items-center gap-3">
