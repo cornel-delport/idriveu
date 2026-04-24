@@ -1,15 +1,23 @@
 import Link from "next/link"
-import { ArrowRight, Check } from "lucide-react"
+import { Check, ShieldCheck, Car, UserCheck, MapPin } from "lucide-react"
 import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
+import { ServiceCard } from "@/components/service-card"
 import { services } from "@/lib/services"
 
 export const metadata = {
   title: "Services — IDriveU",
   description:
-    "All IDriveU services in Plettenberg Bay: Drive Me Home, Wine Farm Driver, Airport Transfers, Event Pickup, Vehicle Collection, Parcel & Errands, Safe Child Pickup, Tourist Day Driver.",
+    "All IDriveU services in Plettenberg Bay: Drive Me Home, Wine Farm Driver, Airport Transfers, Restaurant Pickup, Vehicle Collection, Parcel Delivery, Safe Child Pickup, Tourist Day Driver.",
 }
+
+const trustBadges = [
+  { icon: ShieldCheck, label: "Verified drivers" },
+  { icon: Car, label: "Your own car" },
+  { icon: UserCheck, label: "Female driver option" },
+  { icon: MapPin, label: "Local to Plett" },
+]
 
 export default function ServicesPage() {
   return (
@@ -17,103 +25,137 @@ export default function ServicesPage() {
       <AppTopBar title="Services" />
       <main className="px-4 pt-4">
         <section>
-          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-primary">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.18em] text-accent">
             What we do
           </p>
-          <h1 className="mt-1 text-balance text-[28px] font-semibold leading-tight tracking-tight">
-            Trusted private driver services in Plett.
+          <h1 className="mt-1 text-balance text-[30px] font-semibold leading-[1.08] tracking-tight">
+            What can we help you with?
           </h1>
           <p className="mt-2 text-[14px] leading-relaxed text-muted-foreground">
-            Pick the service you need — every trip is driven by a vetted,
-            friendly local.
+            Choose a service — you can change it later.
           </p>
         </section>
 
-        <section className="mt-5 flex flex-col gap-3 pb-6">
-          {services.map((s) => {
-            const Icon = s.icon
-            return (
-              <article
-                key={s.id}
-                id={s.id}
-                className="rounded-3xl border border-border bg-card p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-start gap-3">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <h2 className="text-[17px] font-semibold tracking-tight">
-                        {s.name}
-                      </h2>
-                      <p className="mt-0.5 text-[12px] font-medium text-primary">
-                        {s.tagline}
-                      </p>
-                    </div>
-                  </div>
-                  {s.badge && (
-                    <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-                      {s.badge}
-                    </span>
-                  )}
-                </div>
+        {/* Card grid — mirrors the brand reference */}
+        <section className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {services.map((s) => (
+            <ServiceCard key={s.id} service={s} />
+          ))}
+        </section>
 
-                <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+        {/* Trust row */}
+        <section className="mt-8">
+          <h2 className="text-[15px] font-semibold tracking-tight">
+            Why families in Plett choose IDriveU
+          </h2>
+          <ul className="mt-3 grid grid-cols-2 gap-2">
+            {trustBadges.map((b) => (
+              <li
+                key={b.label}
+                className="flex items-center gap-2 rounded-2xl border border-border bg-card px-3 py-2.5"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 text-accent">
+                  <b.icon className="h-4 w-4" />
+                </span>
+                <span className="text-[12.5px] font-medium text-foreground">
+                  {b.label}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Feature details — mini cards */}
+        <section className="mt-8 flex flex-col gap-3">
+          <h2 className="text-[15px] font-semibold tracking-tight">
+            Details & what&apos;s included
+          </h2>
+          {services.map((s) => (
+            <details
+              key={s.id}
+              id={s.id}
+              className="group rounded-2xl border border-border bg-card p-4 open:shadow-sm"
+            >
+              <summary className="flex cursor-pointer items-start justify-between gap-3 list-none">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                    <s.icon className="h-4 w-4" strokeWidth={1.8} />
+                  </span>
+                  <div>
+                    <h3 className="text-[15px] font-semibold leading-tight tracking-tight">
+                      {s.name}
+                    </h3>
+                    <p className="mt-0.5 text-[12px] font-medium text-accent">
+                      {s.tagline}
+                    </p>
+                  </div>
+                </div>
+                <span className="mt-1 text-[11px] font-semibold text-muted-foreground group-open:rotate-180 transition-transform">
+                  ▾
+                </span>
+              </summary>
+              <div className="mt-3 border-t border-border pt-3">
+                <p className="text-[13px] leading-relaxed text-muted-foreground">
                   {s.longDescription}
                 </p>
-
                 <ul className="mt-3 grid grid-cols-1 gap-1.5">
                   {s.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-[13px]">
-                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                      <span className="text-foreground">{f}</span>
+                    <li
+                      key={f}
+                      className="flex items-start gap-2 text-[13px]"
+                    >
+                      <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" />
+                      <span>{f}</span>
                     </li>
                   ))}
                 </ul>
-
-                <div className="mt-4 flex items-center justify-between">
+                <div className="mt-3 flex items-center justify-between">
                   <span className="text-[14px] font-semibold">
                     {s.priceLabel}
                   </span>
                   <Link
                     href={`/book?service=${s.id}`}
-                    className="tap inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-[13px] font-semibold text-primary-foreground"
+                    className="tap inline-flex h-10 items-center gap-1.5 rounded-full bg-accent px-4 text-[13px] font-semibold text-accent-foreground shadow-[0_10px_24px_-10px_rgba(25,118,210,0.6)]"
                   >
-                    Book <ArrowRight className="h-3.5 w-3.5" />
+                    Book
                   </Link>
                 </div>
-              </article>
-            )
-          })}
+              </div>
+            </details>
+          ))}
         </section>
 
-        <section className="pb-6">
-          <div className="relative overflow-hidden rounded-3xl bg-primary p-5 text-primary-foreground">
-            <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-accent/25 blur-3xl" />
-            <h3 className="relative text-[20px] font-semibold leading-tight tracking-tight">
+        {/* Custom CTA — dark card variant */}
+        <section className="mt-8 pb-6">
+          <div className="card-dark relative overflow-hidden rounded-[26px] p-6">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-[#4FC3F7]/20 blur-3xl"
+            />
+            <h3 className="relative text-[22px] font-semibold leading-tight tracking-tight text-white">
               Need something custom?
             </h3>
-            <p className="relative mt-1.5 text-[13px] leading-relaxed text-primary-foreground/80">
+            <p className="relative mt-2 text-[13px] leading-relaxed text-white/75">
               Weddings, tour groups, corporate accounts, matric dances — we
               build quotes around your plans.
             </p>
             <div className="relative mt-4 flex gap-2">
               <Link
                 href="/contact"
-                className="tap inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-[13px] font-semibold text-accent-foreground"
+                className="tap btn-glow inline-flex h-11 flex-1 items-center justify-center rounded-xl text-[13px] font-semibold"
               >
                 Get a quote
               </Link>
               <Link
                 href="/book"
-                className="tap inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-primary-foreground/10 text-[13px] font-semibold text-primary-foreground ring-1 ring-primary-foreground/20"
+                className="tap inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-white/10 text-[13px] font-semibold text-white ring-1 ring-white/15"
               >
                 Book a trip
               </Link>
             </div>
           </div>
         </section>
+
         <BottomNavSpacer />
       </main>
       <BottomNav />

@@ -22,6 +22,7 @@ import {
 import { services, type ServiceId, getService } from "@/lib/services"
 import { estimatePrice, formatZAR } from "@/lib/pricing"
 import { RouteMap } from "@/components/booking/route-map"
+import { ServiceCard } from "@/components/service-card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 
@@ -254,9 +255,9 @@ export function BookingWizard() {
               onClick={next}
               disabled={!canProceed}
               className={cn(
-                "tap inline-flex h-13 w-full items-center justify-between rounded-2xl px-5 py-3.5 text-[15px] font-semibold shadow-md",
+                "tap inline-flex h-13 w-full items-center justify-between rounded-2xl px-5 py-3.5 text-[15px] font-semibold",
                 canProceed
-                  ? "bg-primary text-primary-foreground"
+                  ? "btn-glow-strong"
                   : "bg-secondary text-muted-foreground",
               )}
             >
@@ -264,7 +265,7 @@ export function BookingWizard() {
               <span
                 className={cn(
                   "flex h-8 w-8 items-center justify-center rounded-full",
-                  canProceed ? "bg-primary-foreground/15" : "bg-card",
+                  canProceed ? "bg-white/15" : "bg-card",
                 )}
               >
                 <ArrowRight className="h-4 w-4" />
@@ -273,10 +274,10 @@ export function BookingWizard() {
           ) : (
             <button
               onClick={handleConfirm}
-              className="tap inline-flex h-13 w-full items-center justify-between rounded-2xl bg-accent px-5 py-3.5 text-[15px] font-semibold text-accent-foreground shadow-md"
+              className="tap btn-glow-strong inline-flex h-13 w-full items-center justify-between rounded-2xl px-5 py-3.5 text-[15px] font-semibold"
             >
               <span>Confirm &amp; request driver</span>
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-accent-foreground/10">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
                 <CheckCircle2 className="h-4 w-4" />
               </span>
             </button>
@@ -304,50 +305,18 @@ function StepService({
       <p className="mt-1 text-[14px] text-muted-foreground">
         Choose a service — you can change it later.
       </p>
-      <ul className="mt-5 grid grid-cols-2 gap-3">
-        {services.map((s) => {
-          const Icon = s.icon
-          const active = serviceId === s.id
-          return (
-            <li key={s.id}>
-              <button
-                type="button"
-                onClick={() => onChange(s.id)}
-                className={cn(
-                  "tap flex w-full flex-col items-start gap-3 rounded-2xl border p-4 text-left transition",
-                  active
-                    ? "border-primary bg-primary text-primary-foreground ring-2 ring-primary/30"
-                    : "border-border bg-card text-foreground",
-                )}
-              >
-                <span
-                  className={cn(
-                    "flex h-11 w-11 items-center justify-center rounded-xl",
-                    active ? "bg-primary-foreground/15" : "bg-primary/10 text-primary",
-                  )}
-                >
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span>
-                  <span className="block text-[14px] font-semibold leading-tight">
-                    {s.shortName}
-                  </span>
-                  <span
-                    className={cn(
-                      "mt-1 block text-[11px] leading-snug",
-                      active
-                        ? "text-primary-foreground/80"
-                        : "text-muted-foreground",
-                    )}
-                  >
-                    {s.priceLabel}
-                  </span>
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ul>
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {services.map((s) => (
+          <ServiceCard
+            key={s.id}
+            service={s}
+            as="select"
+            active={serviceId === s.id}
+            onSelect={onChange}
+            compact
+          />
+        ))}
+      </div>
     </section>
   )
 }

@@ -1,12 +1,12 @@
 import {
-  Moon,
+  MoonStar,
   Wine,
   Plane,
-  Utensils,
-  Car,
+  ConciergeBell,
+  Key,
   Package,
-  Baby,
-  MapPin,
+  HeartHandshake,
+  Camera,
   type LucideIcon,
 } from "lucide-react"
 
@@ -40,11 +40,10 @@ export const services: Service[] = [
     name: "Drive Me Home",
     shortName: "Drive Home",
     tagline: "Enjoy your night. We get you home.",
-    description:
-      "After dinner, drinks, a wedding or a braai — we drive you home safely in your own car.",
+    description: "We drive you and your car home safely.",
     longDescription:
       "Had a glass of wine too many? Don't risk it. Book IDriveU from the restaurant, pub, wedding or event and a trusted local driver will meet you there and drive you home in your own vehicle. Safe, discreet, and local to Plett.",
-    icon: Moon,
+    icon: MoonStar,
     fromPrice: 250,
     priceLabel: "from R250",
     badge: "Most booked",
@@ -60,8 +59,7 @@ export const services: Service[] = [
     name: "Wine Farm Driver",
     shortName: "Wine Farm",
     tagline: "Taste freely. We'll do the driving.",
-    description:
-      "Spend the day at the wine farms — we drive, wait, and take you home safely.",
+    description: "Enjoy wine tasting. We drive you there and back.",
     longDescription:
       "A dedicated IDriveU driver for your wine tasting day around Plett, Knysna and the Garden Route. Half-day and full-day options, with patient waiting time included.",
     icon: Wine,
@@ -76,11 +74,10 @@ export const services: Service[] = [
   },
   {
     id: "airport",
-    name: "Airport Transfer",
+    name: "Airport Transfers",
     shortName: "Airport",
     tagline: "On time to George, PE or Cape Town.",
-    description:
-      "Reliable transfers to and from George, Gqeberha and Cape Town airports.",
+    description: "Reliable transfers to George, PE or Cape Town Airports.",
     longDescription:
       "Pre-booked transfers with flight tracking. Travel in your own car or arrange a vehicle. Fixed pricing, no surprises.",
     icon: Plane,
@@ -95,14 +92,13 @@ export const services: Service[] = [
   },
   {
     id: "event-pickup",
-    name: "Event Pickup",
-    shortName: "Event",
+    name: "Restaurant Pickup",
+    shortName: "Restaurant",
     tagline: "From restaurant, club or function.",
-    description:
-      "Scheduled pickup from restaurants, clubs, weddings and private events.",
+    description: "We collect you from restaurants, events or any occasion.",
     longDescription:
-      "Book a pickup time in advance and know there's a trusted driver waiting when the night ends.",
-    icon: Utensils,
+      "Book a pickup time in advance and know there's a trusted driver waiting when the night ends — restaurants, clubs, weddings, private functions.",
+    icon: ConciergeBell,
     fromPrice: 220,
     priceLabel: "from R220",
     features: [
@@ -117,13 +113,12 @@ export const services: Service[] = [
     name: "Vehicle Collection",
     shortName: "Collection",
     tagline: "Your car fetched or delivered.",
-    description:
-      "We collect or deliver your car from service centres, airports, dealerships or home.",
+    description: "We fetch or deliver your car anywhere.",
     longDescription:
       "Skip the Uber back from the workshop — we fetch your car and bring it to you, or drop it off for servicing.",
-    icon: Car,
-    fromPrice: 300,
-    priceLabel: "from R300",
+    icon: Key,
+    fromPrice: 250,
+    priceLabel: "from R250",
     features: [
       "Service centre collection",
       "Dealership handover",
@@ -133,16 +128,15 @@ export const services: Service[] = [
   },
   {
     id: "parcel",
-    name: "Parcel & Errands",
+    name: "Parcel Delivery",
     shortName: "Parcel",
     tagline: "Documents, groceries, small parcels.",
-    description:
-      "Quick local pickup and dropoff of parcels, documents and groceries.",
+    description: "Fast and secure parcel or document delivery.",
     longDescription:
       "For busy days when you can't get to the shops, the post office or a collection point — we'll handle it.",
     icon: Package,
-    fromPrice: 180,
-    priceLabel: "from R180",
+    fromPrice: 120,
+    priceLabel: "from R120",
     features: [
       "Local Plett deliveries",
       "Documents & parcels",
@@ -152,16 +146,16 @@ export const services: Service[] = [
   },
   {
     id: "child-pickup",
-    name: "Safe Children Pickup",
-    shortName: "Kids Pickup",
-    tagline: "Trusted, with an optional lady driver.",
+    name: "Safe Child Pickup",
+    shortName: "Child Pickup",
+    tagline: "Trusted, with a female driver option.",
     description:
-      "Trusted pickup and dropoff for your children — female driver available.",
+      "Trusted, safe school or activity pickups. Female driver option available.",
     longDescription:
       "Peace of mind for parents. Vetted drivers, WhatsApp updates at pickup and dropoff, and an option to request a lady driver (subject to availability).",
-    icon: Baby,
-    fromPrice: 220,
-    priceLabel: "from R220",
+    icon: HeartHandshake,
+    fromPrice: 250,
+    priceLabel: "from R250",
     badge: "Family favourite",
     features: [
       "Female driver on request",
@@ -176,12 +170,12 @@ export const services: Service[] = [
     shortName: "Tourist",
     tagline: "Plett, Knysna, Tsitsikamma & more.",
     description:
-      "Private day driver for tourists exploring the Garden Route at your own pace.",
+      "Explore Plettenberg Bay and surrounds with a local driver.",
     longDescription:
       "A friendly local behind the wheel while you take in Plett, Nature's Valley, Knysna, Tsitsikamma, beaches, wine farms and restaurants.",
-    icon: MapPin,
-    fromPrice: 1200,
-    priceLabel: "from R1 200",
+    icon: Camera,
+    fromPrice: 1250,
+    priceLabel: "from R1,250",
     features: [
       "Full-day private driver",
       "Local recommendations",

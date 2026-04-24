@@ -12,7 +12,7 @@ const items = [
     name: "Pieter v.d.M.",
     trip: "Wine Farm day, Bramon",
     quote:
-      "Three farms, zero stress. Friendly, patient, punctual. We&apos;ll use IDriveU every time we visit Plett.",
+      "Three farms, zero stress. Friendly, patient, punctual. We'll use IDriveU every time we visit Plett.",
     rating: 5,
   },
   {
