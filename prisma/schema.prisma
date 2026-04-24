@@ -15,6 +15,7 @@ enum UserRole {
 enum BookingStatus {
   draft
   pending_payment
+  payment_received
   confirmed
   driver_assigned
   driver_on_the_way
@@ -62,7 +63,8 @@ model User {
   bookingsAsCustomer Booking[]      @relation("CustomerBookings")
   bookingsAsDriver   Booking[]      @relation("DriverBookings")
   savedPlaces        SavedPlace[]
-  reviews            Review[]
+  reviews            Review[]      @relation("CustomerReviews")
+  driverReviews      Review[]      @relation("DriverReviews")
   notifications      Notification[]
 }
 
@@ -112,16 +114,19 @@ model DriverProfile {
   isOnline   Boolean  @default(false)
   rating     Float    @default(5.0)
   totalTrips Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model SavedPlace {
   id      String @id @default(cuid())
   userId  String
   user    User   @relation(fields: [userId], references: [id])
-  label   String
-  address String
-  lat     Float?
-  lng     Float?
+  label     String
+  address   String
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
 }
 
 model Booking {
@@ -132,7 +137,7 @@ model Booking {
   driverId             String?
   driver               User?         @relation("DriverBookings", fields: [driverId], references: [id])
   serviceId            String
-  status               BookingStatus @default(confirmed)
+  status               BookingStatus @default(draft)
   statusUpdatedAt      DateTime      @default(now())
   paymentStatus        PaymentStatus @default(pending)
   paymentMethod        PaymentMethod @default(cash)
@@ -178,8 +183,9 @@ model Review {
   bookingId  String   @unique
   booking    Booking  @relation(fields: [bookingId], references: [id])
   customerId String
-  customer   User     @relation(fields: [customerId], references: [id])
+  customer   User     @relation("CustomerReviews", fields: [customerId], references: [id])
   driverId   String
+  driver     User     @relation("DriverReviews", fields: [driverId], references: [id])
   rating     Int
   comment    String?
   createdAt  DateTime @default(now())

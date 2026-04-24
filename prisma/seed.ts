@@ -5,7 +5,8 @@ const db = new PrismaClient()
 
 async function main() {
   // Seed admin user
-  const passwordHash = await bcrypt.hash('admin123', 12)
+  const password = process.env.SEED_ADMIN_PASSWORD ?? 'IDriveU-admin-2026!'
+  const passwordHash = await bcrypt.hash(password, 12)
   await db.user.upsert({
     where: { email: 'cornel@goflexxi.com' },
     update: {},
