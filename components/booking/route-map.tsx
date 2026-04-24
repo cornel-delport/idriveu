@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps"
 
@@ -25,6 +25,8 @@ interface RouteMapProps {
   routeDestinationLng?: number
   /** When true, skip DirectionsService and show only markers */
   noRoute?: boolean
+  /** Children rendered inside the <Map> component (e.g. DriverMarker) */
+  children?: ReactNode
 }
 
 // ---------------------------------------------------------------------------
@@ -111,6 +113,7 @@ export function RouteMap({
   routeDestinationLat,
   routeDestinationLng,
   noRoute = false,
+  children,
 }: RouteMapProps) {
   const h = variant === "full" ? "h-[50vh] min-h-[340px]" : "h-44"
 
@@ -198,6 +201,9 @@ export function RouteMap({
             </div>
           </AdvancedMarker>
         )}
+
+        {/* Additional markers/overlays passed by parent (e.g. live DriverMarker) */}
+        {children}
       </Map>
 
       {/* Labels overlay */}
