@@ -204,7 +204,7 @@ export function BookingWizard() {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
   return (
-    <APIProvider apiKey={mapsApiKey} libraries={["places"]}>
+    <APIProvider apiKey={mapsApiKey} libraries={["places", "routes"]}>
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Top bar with stepper */}
       <header className="sticky top-0 z-30 glass-strong border-b border-border/70">

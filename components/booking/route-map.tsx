@@ -1,7 +1,8 @@
 "use client"
 
+import { useEffect, useRef } from "react"
 import { cn } from "@/lib/utils"
-import { Map, AdvancedMarker } from "@vis.gl/react-google-maps"
+import { Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps"
 
 // Plettenberg Bay — fallback centre when no locations are set
 const PLETT_CENTRE = { lat: -34.0527, lng: 23.3716 }
@@ -16,12 +17,80 @@ interface RouteMapProps {
   className?: string
   /** Display in a tall "uber-like" full screen style */
   variant?: "compact" | "full"
+  /** Override route origin (e.g. driver's live position) instead of pickup */
+  routeOriginLat?: number
+  routeOriginLng?: number
+  /** Override route destination instead of dropoff */
+  routeDestinationLat?: number
+  routeDestinationLng?: number
+  /** When true, skip DirectionsService and show only markers */
+  noRoute?: boolean
+}
+
+// ---------------------------------------------------------------------------
+// RouteLayer — draws the driving polyline between origin and destination.
+// Must be rendered inside <Map> so that useMap() resolves correctly.
+// ---------------------------------------------------------------------------
+interface RouteLayerProps {
+  originLat: number
+  originLng: number
+  destinationLat: number
+  destinationLng: number
+}
+
+function RouteLayer({
+  originLat,
+  originLng,
+  destinationLat,
+  destinationLng,
+}: RouteLayerProps) {
+  const routesLib = useMapsLibrary("routes")
+  const map = useMap()
+  const rendererRef = useRef<google.maps.DirectionsRenderer | null>(null)
+
+  useEffect(() => {
+    if (!routesLib || !map) return
+
+    const service = new routesLib.DirectionsService()
+    const renderer = new routesLib.DirectionsRenderer({
+      suppressMarkers: true,
+      polylineOptions: {
+        strokeColor: "#4FC3F7",
+        strokeWeight: 4,
+        strokeOpacity: 0.85,
+      },
+    })
+    renderer.setMap(map)
+    rendererRef.current = renderer
+
+    service.route(
+      {
+        origin: { lat: originLat, lng: originLng },
+        destination: { lat: destinationLat, lng: destinationLng },
+        travelMode: google.maps.TravelMode.DRIVING,
+      },
+      (result, status) => {
+        if (status === "OK" && result) {
+          renderer.setDirections(result)
+        }
+      },
+    )
+
+    return () => {
+      renderer.setMap(null)
+      rendererRef.current = null
+    }
+  }, [routesLib, map, originLat, originLng, destinationLat, destinationLng])
+
+  return null
 }
 
 /**
  * Real Google Maps embed in satellite mode.
  * Shows pickup (blue dot) and dropoff (red pin) markers when co-ordinates
- * are available. Falls back to a Plett-centred view otherwise.
+ * are available. Draws a driving route polyline between them via
+ * DirectionsService when both points are set (unless noRoute is true).
+ * Falls back to a Plett-centred view otherwise.
  *
  * Must be rendered inside an <APIProvider> — the BookingWizard handles that.
  */
@@ -34,11 +103,31 @@ export function RouteMap({
   dropoffLng,
   className,
   variant = "compact",
+  routeOriginLat,
+  routeOriginLng,
+  routeDestinationLat,
+  routeDestinationLng,
+  noRoute = false,
 }: RouteMapProps) {
   const h = variant === "full" ? "h-[50vh] min-h-[340px]" : "h-44"
 
   const hasPickup = pickupLat !== undefined && pickupLng !== undefined
   const hasDropoff = dropoffLat !== undefined && dropoffLng !== undefined
+
+  // Resolve effective origin/destination for the route
+  const originLat = routeOriginLat ?? pickupLat
+  const originLng = routeOriginLng ?? pickupLng
+  const destinationLat = routeDestinationLat ?? dropoffLat
+  const destinationLng = routeDestinationLng ?? dropoffLng
+
+  const hasRoute =
+    !noRoute &&
+    hasPickup &&
+    hasDropoff &&
+    originLat !== undefined &&
+    originLng !== undefined &&
+    destinationLat !== undefined &&
+    destinationLng !== undefined
 
   // Centre on pickup if we have it, else Plett
   const centre = hasPickup
@@ -63,6 +152,16 @@ export function RouteMap({
         gestureHandling="none"
         style={{ width: "100%", height: "100%" }}
       >
+        {/* Route polyline — only when both endpoints are known */}
+        {hasRoute && (
+          <RouteLayer
+            originLat={originLat!}
+            originLng={originLng!}
+            destinationLat={destinationLat!}
+            destinationLng={destinationLng!}
+          />
+        )}
+
         {/* Pickup marker — glowing blue dot */}
         {hasPickup && (
           <AdvancedMarker position={{ lat: pickupLat!, lng: pickupLng! }}>
