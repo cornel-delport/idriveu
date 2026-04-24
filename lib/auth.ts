@@ -6,6 +6,15 @@ import { db } from '@/lib/db'
 import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 
+type AuthUser = {
+  id: string
+  email: string
+  name: string | null
+  image: string | null
+  role: string
+  phone: string | null
+}
+
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
   session: { strategy: 'jwt' },
@@ -43,7 +52,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const valid = await bcrypt.compare(parsed.data.password, user.passwordHash)
         if (!valid) return null
 
-        return {
+        const authUser: AuthUser = {
           id: user.id,
           email: user.email,
           name: user.name,
@@ -51,6 +60,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           role: user.role,
           phone: user.phone,
         }
+        return authUser as any
       },
     }),
   ],
@@ -58,13 +68,22 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
-        token.role = (user as any).role
-        token.phone = (user as any).phone
+        token.role = (user as AuthUser).role ?? 'customer'
+        token.phone = (user as AuthUser).phone ?? null
+      }
+      // On first Google sign-in, user exists but role/phone may not be in token yet
+      // Load from DB to ensure role is correct
+      if (token.id && !token.role) {
+        const dbUser = await db.user.findUnique({ where: { id: token.id as string } })
+        if (dbUser) {
+          token.role = dbUser.role
+          token.phone = dbUser.phone
+        }
       }
       // Handle session updates (e.g. after phone completion)
       if (trigger === 'update' && session) {
-        token.phone = session.phone
-        token.name = session.name
+        token.phone = session.phone ?? token.phone
+        token.name = session.name ?? token.name
       }
       return token
     },
@@ -75,17 +94,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.phone = token.phone as string | null
       }
       return session
-    },
-    async signIn({ user, account }) {
-      // For Google sign-in, set role to customer if new user
-      if (account?.provider === 'google') {
-        const existing = await db.user.findUnique({ where: { email: user.email! } })
-        if (!existing) {
-          // New user via Google — will be created by adapter, role defaults to customer
-          return true
-        }
-      }
-      return true
     },
   },
 })

@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-  const parsed = z.object({ phone: z.string().min(7) }).safeParse(body)
+  const parsed = z.object({
+    phone: z.string().regex(/^\+?[0-9]{9,15}$/, 'Invalid phone number format')
+  }).safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Invalid phone' }, { status: 400 })
 
   await db.user.update({
