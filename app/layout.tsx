@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/sonner"
+import { SessionProvider } from "next-auth/react"
+import { auth } from "@/lib/auth"
 import "./globals.css"
 
 const inter = Inter({
@@ -47,17 +49,20 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const session = await auth()
   return (
     <html lang="en" className={`${inter.variable} bg-background`}>
       <body className="font-sans antialiased min-h-dvh">
-        {children}
-        <Toaster position="top-center" richColors />
-        {process.env.NODE_ENV === "production" && <Analytics />}
+        <SessionProvider session={session}>
+          {children}
+          <Toaster position="top-center" richColors />
+          {process.env.NODE_ENV === "production" && <Analytics />}
+        </SessionProvider>
       </body>
     </html>
   )
