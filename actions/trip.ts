@@ -18,6 +18,10 @@ export async function updateTripStatus(
   if (!session?.user) return { error: "Not authenticated" }
   const userRole = (session.user as { role?: string }).role
 
+  if (userRole !== "admin" && userRole !== "driver") {
+    return { error: "Forbidden" }
+  }
+
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
     include: {
@@ -38,20 +42,20 @@ export async function updateTripStatus(
     data: { status: status as PrismaBookingStatus, statusUpdatedAt: new Date() },
   })
 
-  // WhatsApp notifications (fire-and-forget — errors are logged inside sendWhatsApp)
+  // WhatsApp notifications — genuinely non-blocking; errors are logged inside sendWhatsApp
   const customerPhone = booking.customer.phone
   if (customerPhone) {
     const driverName = booking.driver?.name ?? "Your driver"
 
     if (status === "driver_on_the_way") {
-      await sendWhatsApp(
+      void sendWhatsApp(
         customerPhone,
         "DRIVER_ON_THE_WAY",
         { driverName, pickup: booking.pickupAddress },
         bookingId,
       )
     } else if (status === "arrived") {
-      await sendWhatsApp(
+      void sendWhatsApp(
         customerPhone,
         "DRIVER_ARRIVED",
         { pickup: booking.pickupAddress },
@@ -59,7 +63,7 @@ export async function updateTripStatus(
       )
     } else if (status === "in_progress" && booking.childPickup) {
       // Only send a notification for in_progress when it's a child pickup trip
-      await sendWhatsApp(
+      void sendWhatsApp(
         customerPhone,
         "CHILD_PICKUP_ALERT",
         {
@@ -69,23 +73,36 @@ export async function updateTripStatus(
         bookingId,
       )
     } else if (status === "completed") {
-      await sendWhatsApp(
-        customerPhone,
-        "TRIP_COMPLETED",
-        {
-          ref: booking.reference,
-          amount: String(booking.finalPrice ?? booking.estimatedPrice),
-          link: `${process.env.NEXTAUTH_URL}/review?booking=${bookingId}`,
-        },
-        bookingId,
-      )
       if (booking.childPickup) {
-        await sendWhatsApp(
+        void Promise.all([
+          sendWhatsApp(
+            customerPhone,
+            "TRIP_COMPLETED",
+            {
+              ref: booking.reference,
+              amount: String(booking.finalPrice ?? booking.estimatedPrice),
+              link: `${process.env.NEXTAUTH_URL}/review?booking=${bookingId}`,
+            },
+            bookingId,
+          ),
+          sendWhatsApp(
+            customerPhone,
+            "CHILD_DROPOFF_ALERT",
+            {
+              childName: booking.childDetail?.childName ?? "your child",
+              address: booking.dropoffAddress,
+            },
+            bookingId,
+          ),
+        ])
+      } else {
+        void sendWhatsApp(
           customerPhone,
-          "CHILD_DROPOFF_ALERT",
+          "TRIP_COMPLETED",
           {
-            childName: booking.childDetail?.childName ?? "your child",
-            address: booking.dropoffAddress,
+            ref: booking.reference,
+            amount: String(booking.finalPrice ?? booking.estimatedPrice),
+            link: `${process.env.NEXTAUTH_URL}/review?booking=${bookingId}`,
           },
           bookingId,
         )

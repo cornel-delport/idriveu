@@ -37,24 +37,25 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. Upsert driver location
+  const locationFields = {
+    lat: body.lat,
+    lng: body.lng,
+    heading: body.heading,
+    speed: body.speed,
+    accuracy: body.accuracy,
+  }
+
   await db.driverLocation.upsert({
     where: { bookingId: body.bookingId },
     create: {
       bookingId: body.bookingId,
       driverId: session.user.id,
-      lat: body.lat,
-      lng: body.lng,
-      heading: body.heading,
-      speed: body.speed,
-      accuracy: body.accuracy,
+      isOnline: true,
+      ...locationFields,
     },
     update: {
-      lat: body.lat,
-      lng: body.lng,
-      heading: body.heading,
-      speed: body.speed,
-      accuracy: body.accuracy,
       isOnline: true,
+      ...locationFields,
     },
   })
 
