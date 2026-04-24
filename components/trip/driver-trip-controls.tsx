@@ -23,6 +23,8 @@ interface DriverTripControlsProps {
   customerPhone?: string
 }
 
+const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
+
 // Status transition map: current status → { label, nextStatus }
 const STATUS_TRANSITIONS: Partial<
   Record<BookingStatus, { label: string; icon: React.ElementType; nextStatus: BookingStatus }>
@@ -68,7 +70,6 @@ export function DriverTripControls({
   const [advancing, setAdvancing] = useState(false)
   const watchIdRef = useRef<number | null>(null)
   const lastSentRef = useRef<number>(0)
-  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
   // Track while trip is active; stop when completed/cancelled
   const shouldTrack = !["completed", "cancelled", "refunded", "refund_requested"].includes(status)
@@ -101,7 +102,7 @@ export function DriverTripControls({
         }
         setIsTracking(false)
       },
-      { enableHighAccuracy: true, maximumAge: 0 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 10_000 },
     )
 
     return () => {
@@ -135,6 +136,7 @@ export function DriverTripControls({
         navigator.geolocation.clearWatch(watchIdRef.current)
         watchIdRef.current = null
       }
+      setIsTracking(false)
       router.push("/driver")
     }
   }

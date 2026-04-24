@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { DriverTripControls } from "@/components/trip/driver-trip-controls"
+import type { BookingStatus } from "@/lib/types"
 
 export default async function DriverTripPage({
   params,
@@ -30,7 +31,7 @@ export default async function DriverTripPage({
   return (
     <DriverTripControls
       bookingId={booking.id}
-      status={booking.status as import("@/lib/types").BookingStatus}
+      status={booking.status as BookingStatus}
       pickupAddress={booking.pickupAddress}
       pickupLat={booking.pickupLat ?? undefined}
       pickupLng={booking.pickupLng ?? undefined}
