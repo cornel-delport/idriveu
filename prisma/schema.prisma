@@ -218,3 +218,17 @@ model PricingConfig {
   key   String @unique
   value String
 }
+
+model DriverLocation {
+  id        String   @id @default(cuid())
+  bookingId String   @unique
+  driverId  String
+  lat       Float
+  lng       Float
+  heading   Float?
+  speed     Float?
+  accuracy  Float?
+  isOnline  Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
