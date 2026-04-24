@@ -37,6 +37,7 @@ export function LiveTripMap({
 }: LiveTripMapProps) {
   const [driverLoc, setDriverLoc] = useState<DriverLocation | null>(null)
   const cancelAnimRef = useRef<(() => void) | null>(null)
+  const mountedRef = useRef(true)
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? ""
 
   // Subscribe to realtime driver location updates
@@ -52,8 +53,13 @@ export function LiveTripMap({
           filter: `bookingId=eq.${bookingId}`,
         },
         (payload) => {
-          const raw = payload.new as { lat: number; lng: number; heading?: number | null }
-          const newLoc = { lat: raw.lat, lng: raw.lng, heading: raw.heading }
+          const raw = payload.new as Record<string, unknown>
+          if (typeof raw.lat !== "number" || typeof raw.lng !== "number") return
+          const newLoc: DriverLocation = {
+            lat: raw.lat,
+            lng: raw.lng,
+            heading: typeof raw.heading === "number" ? raw.heading : null,
+          }
 
           setDriverLoc((prev) => {
             if (prev) {
@@ -63,7 +69,11 @@ export function LiveTripMap({
                 prev,
                 newLoc,
                 800, // 800ms smooth transition
-                (pos) => setDriverLoc({ ...newLoc, ...pos }),
+                (pos) => {
+                  if (mountedRef.current) {
+                    setDriverLoc({ ...newLoc, ...pos })
+                  }
+                },
               )
               return prev // animation will update state
             }
@@ -74,6 +84,7 @@ export function LiveTripMap({
       .subscribe()
 
     return () => {
+      mountedRef.current = false
       supabase.removeChannel(channel)
       cancelAnimRef.current?.()
     }

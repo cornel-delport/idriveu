@@ -11,6 +11,8 @@ export function animateLatLng(
 ): () => void {
   const start = performance.now()
 
+  let rafId: number
+
   function tick(now: number) {
     const elapsed = now - start
     const t = Math.min(elapsed / durationMs, 1)
@@ -27,6 +29,6 @@ export function animateLatLng(
     }
   }
 
-  let rafId = requestAnimationFrame(tick)
+  rafId = requestAnimationFrame(tick)
   return () => cancelAnimationFrame(rafId)
 }

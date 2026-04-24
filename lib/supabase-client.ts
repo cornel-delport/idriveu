@@ -7,6 +7,10 @@
  * NOTE: After running `prisma db push`, enable Realtime on the
  * "DriverLocation" table in Supabase dashboard:
  *   Table Editor → Replication → toggle DriverLocation ON
+ *
+ * SECURITY: Row Level Security (RLS) must be enabled on the DriverLocation table.
+ * Recommended policy: Allow SELECT only when auth.uid() matches the booking's customerId.
+ * Without RLS, anyone with a valid bookingId can subscribe to driver GPS from the browser.
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
 
