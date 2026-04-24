@@ -8,13 +8,14 @@ import { ArrowLeft } from "lucide-react"
 export default async function TripTrackingPage({
   params,
 }: {
-  params: { bookingId: string }
+  params: Promise<{ bookingId: string }>
 }) {
+  const { bookingId } = await params
   const session = await auth()
   if (!session?.user) redirect("/login")
 
   const booking = await db.booking.findUnique({
-    where: { id: params.bookingId },
+    where: { id: bookingId },
     include: { driver: { select: { name: true, phone: true } } },
   })
 
