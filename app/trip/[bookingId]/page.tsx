@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { LiveTripMap } from "@/components/trip/live-trip-map"
+import { TripStatusSheet } from "@/components/trip/trip-status-sheet"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
@@ -57,26 +58,15 @@ export default async function TripTrackingPage({
         />
       </div>
 
-      {/* Bottom status card — TODO: replace with TripStatusSheet in Task 5 */}
-      <div className="absolute inset-x-0 bottom-0 z-30 p-4 pb-safe">
-        <div className="glass-strong rounded-3xl border border-border p-4">
-          <div className="text-[13px] font-semibold capitalize text-foreground">
-            {booking.status.replace(/_/g, " ")}
-          </div>
-          {booking.driver && (
-            <div className="mt-1 text-[12px] text-muted-foreground">
-              Driver: {booking.driver.name}
-              {booking.driver.phone && (
-                <a href={`tel:${booking.driver.phone}`} className="ml-2 text-primary underline">
-                  Call
-                </a>
-              )}
-            </div>
-          )}
-          <p className="mt-2 text-[11px] text-muted-foreground/70">
-            You are booking a private driver who drives your own car.
-          </p>
-        </div>
+      {/* Bottom status sheet */}
+      <div className="absolute inset-x-0 bottom-0 z-30">
+        <TripStatusSheet
+          status={booking.status as import("@/lib/types").BookingStatus}
+          driverName={booking.driver?.name}
+          driverPhone={booking.driver?.phone}
+          pickupAddress={booking.pickupAddress}
+          dropoffAddress={booking.dropoffAddress}
+        />
       </div>
     </div>
   )
