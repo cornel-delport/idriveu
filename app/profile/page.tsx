@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
@@ -13,13 +14,15 @@ import {
   ItemGroup,
   ItemSeparator,
 } from "@/components/ui/item"
+import { SignOutButton } from "@/components/sign-out-button"
+import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
 import {
   Bell,
   ChevronRight,
   CreditCard,
   HelpCircle,
   LifeBuoy,
-  LogOut,
   Mail,
   MapPin,
   Shield,
@@ -27,7 +30,29 @@ import {
   User,
 } from "lucide-react"
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/login")
+
+  const user = await db.user.findUnique({
+    where: { id: session.user.id },
+    include: { savedPlaces: { orderBy: { createdAt: "asc" } } },
+  })
+  if (!user) redirect("/login")
+
+  const initials = (user.name ?? "?")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+
+  const tripCount = await db.booking.count({
+    where: { customerId: session.user.id, status: "completed" },
+  })
+
+  const memberYear = new Date(user.createdAt).getFullYear()
+
   return (
     <MobileShell>
       <AppTopBar title="Profile" />
@@ -37,10 +62,12 @@ export default function ProfilePage() {
         <div className="rounded-3xl bg-primary p-5 text-primary-foreground">
           <div className="flex items-center gap-4">
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-foreground/15 text-[18px] font-semibold">
-              TM
+              {initials}
             </span>
             <div className="min-w-0 flex-1">
-              <h1 className="text-[20px] font-semibold tracking-tight">Thandi Mokoena</h1>
+              <h1 className="text-[20px] font-semibold tracking-tight">
+                {user.name ?? "No name"}
+              </h1>
               <p className="mt-0.5 flex items-center gap-1.5 text-[12px] text-primary-foreground/80">
                 <Star className="h-3.5 w-3.5 fill-current" /> 4.98 passenger rating
               </p>
@@ -55,9 +82,9 @@ export default function ProfilePage() {
             </Button>
           </div>
           <dl className="mt-5 grid grid-cols-3 gap-2 rounded-2xl bg-primary-foreground/10 p-3 text-center">
-            <Stat label="Trips" value="12" />
-            <Stat label="Saved" value="R 840" />
-            <Stat label="Since" value="2024" />
+            <Stat label="Trips" value={String(tripCount)} />
+            <Stat label="Saved" value={`${user.savedPlaces.length}`} />
+            <Stat label="Since" value={String(memberYear)} />
           </dl>
         </div>
 
@@ -116,13 +143,7 @@ export default function ProfilePage() {
           </ItemGroup>
         </div>
 
-        <Button
-          variant="outline"
-          className="mt-6 h-12 w-full rounded-full border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive"
-        >
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign out
-        </Button>
+        <SignOutButton />
 
         <p className="mt-4 text-center text-[11px] text-muted-foreground">
           IDriveU · Plettenberg Bay · v1.0

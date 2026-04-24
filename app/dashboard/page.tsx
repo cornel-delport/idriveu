@@ -1,16 +1,56 @@
 import Link from "next/link"
 import { ArrowRight, MapPin, Plus, Star } from "lucide-react"
+import { redirect } from "next/navigation"
 import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
 import { BookingItem } from "@/components/dashboard/booking-item"
-import { mockBookings } from "@/lib/mock-data"
+import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
 import { formatZAR } from "@/lib/pricing"
+import type { Booking } from "@/lib/types"
+import type { Booking as PrismaBooking } from "@prisma/client"
 
-const user = { name: "Thandi Mokoena", email: "thandi@example.com" }
+function mapBooking(b: PrismaBooking): Booking {
+  return {
+    id: b.id,
+    reference: b.reference,
+    customerId: b.customerId,
+    customerName: "",
+    driverId: b.driverId ?? undefined,
+    serviceId: b.serviceId as Booking["serviceId"],
+    pickup: { address: b.pickupAddress, lat: b.pickupLat ?? undefined, lng: b.pickupLng ?? undefined },
+    dropoff: { address: b.dropoffAddress, lat: b.dropoffLat ?? undefined, lng: b.dropoffLng ?? undefined },
+    stops: [],
+    dateTime: b.dateTime.toISOString(),
+    returnTrip: b.returnTrip,
+    returnDateTime: b.returnDateTime?.toISOString(),
+    passengerCount: b.passengerCount,
+    usesCustomerVehicle: b.usesCustomerVehicle,
+    requiresFemaleDriver: b.requiresFemaleDriver,
+    childPickup: b.childPickup,
+    distanceKm: b.distanceKm,
+    durationMinutes: b.durationMinutes,
+    estimatedPrice: b.estimatedPrice,
+    finalPrice: b.finalPrice ?? undefined,
+    status: b.status as Booking["status"],
+    paymentStatus: b.paymentStatus as Booking["paymentStatus"],
+    notes: b.notes ?? undefined,
+    createdAt: b.createdAt.toISOString(),
+  }
+}
 
-export default function CustomerDashboard() {
-  const myBookings = mockBookings.filter((b) => b.customerId === "cust_01")
+export default async function CustomerDashboard() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/login")
+
+  const myBookingsRaw = await db.booking.findMany({
+    where: { customerId: session.user.id },
+    orderBy: { dateTime: "desc" },
+  })
+
+  const myBookings = myBookingsRaw.map(mapBooking)
+
   const upcoming = myBookings.filter(
     (b) => new Date(b.dateTime) > new Date() && b.status !== "cancelled",
   )
@@ -20,7 +60,12 @@ export default function CustomerDashboard() {
     .filter((b) => b.paymentStatus === "paid")
     .reduce((sum, b) => sum + (b.finalPrice ?? b.estimatedPrice), 0)
 
-  const firstName = user.name.split(" ")[0]
+  const firstName = session.user.name?.split(" ")[0] ?? "there"
+
+  const savedPlaces = await db.savedPlace.findMany({
+    where: { userId: session.user.id },
+    orderBy: { createdAt: "asc" },
+  })
 
   return (
     <MobileShell>
@@ -112,27 +157,29 @@ export default function CustomerDashboard() {
             Quick taps for places you visit often.
           </p>
           <ul className="mt-3 grid grid-cols-1 gap-2">
-            {[
-              { label: "Home", address: "14 Cormorant Drive, Plett" },
-              { label: "Office", address: "Main Road, Plett" },
-              { label: "Favourite restaurant", address: "The Lookout Deck" },
-            ].map((p) => (
-              <li
-                key={p.label}
-                className="flex items-center gap-3 rounded-2xl bg-secondary p-3"
-              >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <MapPin className="h-4 w-4" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold">{p.label}</p>
-                  <p className="truncate text-[12px] text-muted-foreground">
-                    {p.address}
-                  </p>
-                </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+            {savedPlaces.length === 0 ? (
+              <li className="rounded-2xl bg-secondary p-3 text-[13px] text-muted-foreground">
+                No saved places yet.
               </li>
-            ))}
+            ) : (
+              savedPlaces.map((p) => (
+                <li
+                  key={p.id}
+                  className="flex items-center gap-3 rounded-2xl bg-secondary p-3"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <MapPin className="h-4 w-4" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-semibold">{p.label}</p>
+                    <p className="truncate text-[12px] text-muted-foreground">
+                      {p.address}
+                    </p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </li>
+              ))
+            )}
           </ul>
         </section>
 

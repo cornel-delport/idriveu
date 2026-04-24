@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
@@ -6,13 +7,52 @@ import { BookingItem } from "@/components/dashboard/booking-item"
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { mockBookings } from "@/lib/mock-data"
+import { auth } from "@/lib/auth"
+import { db } from "@/lib/db"
 import { CalendarPlus } from "lucide-react"
+import type { Booking } from "@/lib/types"
+import type { Booking as PrismaBooking } from "@prisma/client"
 
-export default function BookingsPage() {
-  const all = [...mockBookings].sort(
-    (a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime(),
-  )
+function mapBooking(b: PrismaBooking): Booking {
+  return {
+    id: b.id,
+    reference: b.reference,
+    customerId: b.customerId,
+    customerName: "",
+    driverId: b.driverId ?? undefined,
+    serviceId: b.serviceId as Booking["serviceId"],
+    pickup: { address: b.pickupAddress, lat: b.pickupLat ?? undefined, lng: b.pickupLng ?? undefined },
+    dropoff: { address: b.dropoffAddress, lat: b.dropoffLat ?? undefined, lng: b.dropoffLng ?? undefined },
+    stops: [],
+    dateTime: b.dateTime.toISOString(),
+    returnTrip: b.returnTrip,
+    returnDateTime: b.returnDateTime?.toISOString(),
+    passengerCount: b.passengerCount,
+    usesCustomerVehicle: b.usesCustomerVehicle,
+    requiresFemaleDriver: b.requiresFemaleDriver,
+    childPickup: b.childPickup,
+    distanceKm: b.distanceKm,
+    durationMinutes: b.durationMinutes,
+    estimatedPrice: b.estimatedPrice,
+    finalPrice: b.finalPrice ?? undefined,
+    status: b.status as Booking["status"],
+    paymentStatus: b.paymentStatus as Booking["paymentStatus"],
+    notes: b.notes ?? undefined,
+    createdAt: b.createdAt.toISOString(),
+  }
+}
+
+export default async function BookingsPage() {
+  const session = await auth()
+  if (!session?.user?.id) redirect("/login")
+
+  const bookingsRaw = await db.booking.findMany({
+    where: { customerId: session.user.id },
+    orderBy: { dateTime: "desc" },
+  })
+
+  const all = bookingsRaw.map(mapBooking)
+
   const now = Date.now()
   const upcoming = all.filter(
     (b) =>

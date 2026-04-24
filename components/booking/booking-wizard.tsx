@@ -19,12 +19,14 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from "lucide-react"
+import { useSession } from "next-auth/react"
 import { services, type ServiceId, getService } from "@/lib/services"
 import { estimatePrice, formatZAR } from "@/lib/pricing"
 import { RouteMap } from "@/components/booking/route-map"
 import { ServiceCard } from "@/components/service-card"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
+import { createBooking } from "@/actions/bookings"
 
 type Step = 0 | 1 | 2 | 3 | 4
 
@@ -52,6 +54,7 @@ export function BookingWizard() {
   const router = useRouter()
   const params = useSearchParams()
   const [step, setStep] = useState<Step>(0)
+  const { data: session } = useSession()
 
   const defaults = useMemo(() => {
     const now = new Date()
@@ -123,14 +126,48 @@ export function BookingWizard() {
     return true
   }, [step, state])
 
+  // Pre-fill contact details from session when it loads
+  useEffect(() => {
+    if (session?.user) {
+      setState((s) => ({
+        ...s,
+        name: s.name || session.user.name || "",
+        phone: s.phone || (session.user as { phone?: string }).phone || "",
+        email: s.email || session.user.email || "",
+      }))
+    }
+  }, [session])
+
   // Scroll to top on step change
   useEffect(() => {
     if (typeof window !== "undefined") window.scrollTo({ top: 0 })
   }, [step])
 
-  function handleConfirm() {
+  async function handleConfirm() {
+    const result = await createBooking({
+      serviceId: state.serviceId,
+      pickupAddress: state.pickup,
+      dropoffAddress: state.dropoff,
+      stops: state.stops.filter(Boolean).map((s) => ({ address: s })),
+      dateTime: `${state.date}T${state.time}:00`,
+      passengerCount: state.passengers,
+      usesCustomerVehicle: state.usesCustomerVehicle,
+      requiresFemaleDriver: state.requiresFemaleDriver,
+      childPickup: state.childPickup,
+      distanceKm: estimate.distanceKm,
+      durationMinutes: estimate.durationMinutes,
+      estimatedPrice: estimate.price,
+      notes: state.notes,
+      paymentMethod: state.payment === "card" ? "cash" : (state.payment as "eft" | "cash"),
+    })
+
+    if ("error" in result) {
+      toast.error(result.error)
+      return
+    }
+
     const payload = new URLSearchParams()
-    payload.set("ref", `IDU-${Math.floor(4000 + Math.random() * 900)}`)
+    payload.set("ref", result.reference)
     payload.set("service", state.serviceId)
     payload.set("pickup", state.pickup)
     payload.set("dropoff", state.dropoff)
@@ -139,8 +176,8 @@ export function BookingWizard() {
     payload.set("price", String(estimate.price))
     payload.set("distance", String(estimate.distanceKm))
     payload.set("duration", String(estimate.durationMinutes))
-    payload.set("payment", state.payment)
-    toast.success("Booking sent — we'll confirm shortly")
+
+    toast.success("Booking confirmed!")
     router.push(`/book/confirmation?${payload.toString()}`)
   }
 
