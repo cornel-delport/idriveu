@@ -30,6 +30,63 @@ interface RouteMapProps {
 }
 
 // ---------------------------------------------------------------------------
+// CameraController — imperatively pans/zooms the map when coordinates change.
+// Must be rendered inside <Map> so that useMap() resolves correctly.
+// ---------------------------------------------------------------------------
+interface CameraControllerProps {
+  pickupLat?: number
+  pickupLng?: number
+  dropoffLat?: number
+  dropoffLng?: number
+}
+
+function CameraController({
+  pickupLat,
+  pickupLng,
+  dropoffLat,
+  dropoffLng,
+}: CameraControllerProps) {
+  const map = useMap()
+  const hp = pickupLat !== undefined && pickupLng !== undefined
+  const hd = dropoffLat !== undefined && dropoffLng !== undefined
+
+  useEffect(() => {
+    if (!map) return
+
+    if (hp && hd) {
+      // Fit both markers in view with generous padding
+      const north = Math.max(pickupLat!, dropoffLat!)
+      const south = Math.min(pickupLat!, dropoffLat!)
+      const east = Math.max(pickupLng!, dropoffLng!)
+      const west = Math.min(pickupLng!, dropoffLng!)
+      // Add a small buffer so markers aren't right at the edge
+      const latPad = Math.max((north - south) * 0.25, 0.004)
+      const lngPad = Math.max((east - west) * 0.25, 0.004)
+      map.fitBounds(
+        {
+          north: north + latPad,
+          south: south - latPad,
+          east: east + lngPad,
+          west: west - lngPad,
+        },
+        /* pixel padding */ 40,
+      )
+    } else if (hd) {
+      // User just set the dropoff — zoom to it
+      map.panTo({ lat: dropoffLat!, lng: dropoffLng! })
+      map.setZoom(16)
+    } else if (hp) {
+      // Only pickup known — zoom to it
+      map.panTo({ lat: pickupLat!, lng: pickupLng! })
+      map.setZoom(15)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [map, pickupLat, pickupLng, dropoffLat, dropoffLng])
+
+  return null
+}
+
+// ---------------------------------------------------------------------------
 // RouteLayer — draws the driving polyline between origin and destination.
 // Must be rendered inside <Map> so that useMap() resolves correctly.
 // ---------------------------------------------------------------------------
@@ -156,6 +213,14 @@ export function RouteMap({
         gestureHandling="none"
         style={{ width: "100%", height: "100%" }}
       >
+        {/* Camera controller — pans/zooms when pickup/dropoff change */}
+        <CameraController
+          pickupLat={pickupLat}
+          pickupLng={pickupLng}
+          dropoffLat={dropoffLat}
+          dropoffLng={dropoffLng}
+        />
+
         {/* Route polyline — only when both endpoints are known */}
         {hasRoute && (
           <RouteLayer
