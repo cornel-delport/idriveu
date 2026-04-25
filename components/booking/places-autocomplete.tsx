@@ -2,14 +2,17 @@
 
 /**
  * PlacesAutocomplete
- * Wraps the Google Maps Places Autocomplete API to provide a styled, mobile-
- * first address-search input with a dropdown suggestions list.
+ * Wraps the Google Maps Places API (New) to provide a styled, mobile-first
+ * address-search input with a dropdown suggestions list.
+ *
+ * Uses AutocompleteSuggestion + Place.fetchFields — the APIs required for
+ * Google Cloud projects created after March 1, 2025 (legacy AutocompleteService
+ * and PlacesService are not available to new customers).
  *
  * Requires <APIProvider apiKey={...}> somewhere above in the tree.
- * Falls back gracefully to a plain input if the library hasn't loaded yet.
  */
 
-import { useState, useCallback, useRef, useEffect } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { useMapsLibrary } from "@vis.gl/react-google-maps"
 import { MapPin, CircleDot, X, Loader2, Navigation } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -36,7 +39,7 @@ interface PlacesAutocompleteProps {
 
 // Plettenberg Bay bias centre — keeps suggestions local by default
 const PLETT_CENTRE = { lat: -34.0527, lng: 23.3716 }
-const BIAS_RADIUS_M = 80_000 // 80 km covers Garden Route airports
+const BIAS_RADIUS_M = 80_000 // 80 km covers George / Cape Town airports
 
 export function PlacesAutocomplete({
   value,
@@ -48,101 +51,85 @@ export function PlacesAutocomplete({
   onUseCurrentLocation,
   locating = false,
 }: PlacesAutocompleteProps) {
+  // Load the "places" library from the Maps JS SDK
   const placesLib = useMapsLibrary("places")
 
   const [inputValue, setInputValue] = useState(value)
   const [predictions, setPredictions] = useState<
-    google.maps.places.AutocompletePrediction[]
+    google.maps.places.PlacePrediction[]
   >([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const autocompleteRef = useRef<google.maps.places.AutocompleteService | null>(null)
-  const placesRef = useRef<google.maps.places.PlacesService | null>(null)
-  const dummyRef = useRef<HTMLDivElement | null>(null)
-
-  // Initialise services once the Places library is loaded
-  useEffect(() => {
-    if (!placesLib) return
-    autocompleteRef.current = new placesLib.AutocompleteService()
-    if (!dummyRef.current) dummyRef.current = document.createElement("div")
-    placesRef.current = new placesLib.PlacesService(dummyRef.current)
-  }, [placesLib])
-
-  // Sync external value resets (e.g. wizard resets)
+  // Sync external value resets (e.g. wizard resets the field)
   useEffect(() => {
     setInputValue(value)
   }, [value])
 
   const fetchPredictions = useCallback(
-    (text: string) => {
-      if (!autocompleteRef.current || text.trim().length < 2) {
+    async (text: string) => {
+      if (!placesLib || text.trim().length < 2) {
         setPredictions([])
         setOpen(false)
         return
       }
       setLoading(true)
-      autocompleteRef.current.getPlacePredictions(
-        {
-          input: text,
-          // Bias — not restrict — so George/Cape Town airports work too
-          locationBias: new google.maps.Circle({
-            center: PLETT_CENTRE,
-            radius: BIAS_RADIUS_M,
-          }),
-          componentRestrictions: { country: "za" },
-        },
-        (results, status) => {
-          setLoading(false)
-          if (
-            status === google.maps.places.PlacesServiceStatus.OK &&
-            results?.length
-          ) {
-            setPredictions(results)
-            setOpen(true)
-          } else {
-            setPredictions([])
-            setOpen(false)
-          }
-        },
-      )
+      try {
+        const { suggestions } =
+          await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
+            {
+              input: text,
+              includedRegionCodes: ["za"],
+              // Bias (not restrict) so nearby airports work too
+              locationBias: {
+                center: PLETT_CENTRE,
+                radius: BIAS_RADIUS_M,
+              },
+            },
+          )
+
+        const preds = suggestions
+          .filter((s) => s.placePrediction != null)
+          .map((s) => s.placePrediction!)
+
+        setPredictions(preds)
+        setOpen(preds.length > 0)
+      } catch {
+        setPredictions([])
+        setOpen(false)
+      } finally {
+        setLoading(false)
+      }
     },
-    [],
+    [placesLib],
   )
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const text = e.target.value
     setInputValue(text)
-    // Immediately propagate the raw text so the wizard state stays in sync
+    // Propagate raw text immediately so wizard state stays in sync
     onChange({ address: text })
     fetchPredictions(text)
   }
 
-  function handleSelect(pred: google.maps.places.AutocompletePrediction) {
-    const formatted = pred.description
+  async function handleSelect(pred: google.maps.places.PlacePrediction) {
+    const formatted = pred.text.toString()
     setInputValue(formatted)
     setOpen(false)
     setPredictions([])
 
-    // Resolve lat/lng via PlacesService.getDetails
-    placesRef.current?.getDetails(
-      { placeId: pred.place_id, fields: ["geometry", "formatted_address"] },
-      (place, status) => {
-        if (
-          status === google.maps.places.PlacesServiceStatus.OK &&
-          place?.geometry?.location
-        ) {
-          onChange({
-            address: place.formatted_address ?? formatted,
-            lat: place.geometry.location.lat(),
-            lng: place.geometry.location.lng(),
-            placeId: pred.place_id,
-          })
-        } else {
-          onChange({ address: formatted })
-        }
-      },
-    )
+    try {
+      const place = pred.toPlace()
+      await place.fetchFields({ fields: ["location", "formattedAddress"] })
+      onChange({
+        address: place.formattedAddress ?? formatted,
+        lat: place.location?.lat(),
+        lng: place.location?.lng(),
+        placeId: pred.placeId,
+      })
+    } catch {
+      onChange({ address: formatted })
+    }
   }
 
   function handleClear() {
@@ -188,7 +175,7 @@ export function PlacesAutocomplete({
                 predictions.length > 0 &&
                 setOpen(true)
               }
-              // Delay close so mousedown on option fires first
+              // Delay close so mousedown on suggestion fires first
               onBlur={() => setTimeout(() => setOpen(false), 150)}
               placeholder={placeholder}
               autoComplete="off"
@@ -197,7 +184,6 @@ export function PlacesAutocomplete({
             {inputValue && (
               <button
                 type="button"
-                // Use mousedown to fire before onBlur
                 onMouseDown={(e) => {
                   e.preventDefault()
                   handleClear()
@@ -211,7 +197,7 @@ export function PlacesAutocomplete({
           </div>
         </span>
 
-        {/* "Use my location" button — only shown on pickup field when empty */}
+        {/* "Use my location" button — only on pickup field when empty */}
         {onUseCurrentLocation && !inputValue && (
           <button
             type="button"
@@ -234,7 +220,7 @@ export function PlacesAutocomplete({
           className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_32px_-8px_rgba(0,0,0,0.3)]"
         >
           {predictions.map((pred) => (
-            <li key={pred.place_id} role="option" aria-selected={false}>
+            <li key={pred.placeId} role="option" aria-selected={false}>
               <button
                 type="button"
                 onMouseDown={(e) => {
@@ -246,10 +232,10 @@ export function PlacesAutocomplete({
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-semibold leading-tight">
-                    {pred.structured_formatting.main_text}
+                    {pred.mainText?.toString()}
                   </p>
                   <p className="truncate text-[11px] text-muted-foreground">
-                    {pred.structured_formatting.secondary_text}
+                    {pred.secondaryText?.toString()}
                   </p>
                 </div>
               </button>

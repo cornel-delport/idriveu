@@ -27,7 +27,7 @@ export default function CompleteProfilePage() {
       if (!res.ok) throw new Error('Failed to update')
       await update({ phone })
       toast.success('Profile complete!')
-      router.push('/dashboard')
+      router.push('/book')
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {

@@ -29,7 +29,7 @@ export default function LoginPage() {
       if (result?.error) {
         toast.error('Invalid email or password.')
       } else {
-        router.push('/dashboard')
+        router.push('/book')
         router.refresh()
       }
     } finally {
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             <button
               type="button"
-              onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
+              onClick={() => signIn('google', { callbackUrl: '/book' })}
               className="tap mt-3 inline-flex h-12 w-full items-center justify-center gap-2 rounded-full border border-border bg-card text-[14px] font-semibold"
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">

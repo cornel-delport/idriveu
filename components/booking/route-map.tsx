@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
-import { Map, AdvancedMarker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps"
+import { Map, Marker, useMap, useMapsLibrary } from "@vis.gl/react-google-maps"
 
 // Plettenberg Bay — fallback centre when no locations are set
 const PLETT_CENTRE = { lat: -34.0527, lng: 23.3716 }
@@ -168,38 +168,47 @@ export function RouteMap({
 
         {/* Pickup marker — glowing blue dot */}
         {hasPickup && (
-          <AdvancedMarker position={{ lat: pickupLat!, lng: pickupLng! }}>
-            <div
-              style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                background: "#2196F3",
-                border: "3px solid #fff",
-                boxShadow: "0 0 0 4px rgba(33,150,243,0.35), 0 4px 12px rgba(0,0,0,0.4)",
-              }}
-            />
-          </AdvancedMarker>
+          <Marker
+            position={{ lat: pickupLat!, lng: pickupLng! }}
+            title={pickupLabel}
+            icon={{
+              url:
+                "data:image/svg+xml," +
+                encodeURIComponent(
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22">' +
+                    '<circle cx="11" cy="11" r="7" fill="#2196F3" stroke="#fff" stroke-width="3"/>' +
+                    '<circle cx="11" cy="11" r="11" fill="rgba(33,150,243,0.25)"/>' +
+                  "</svg>",
+                ),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              scaledSize: { width: 22, height: 22 } as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              anchor: { x: 11, y: 11 } as any,
+            }}
+          />
         )}
 
-        {/* Dropoff marker — red teardrop */}
+        {/* Dropoff marker — red teardrop pin */}
         {hasDropoff && (
-          <AdvancedMarker position={{ lat: dropoffLat!, lng: dropoffLng! }}>
-            <div style={{ textAlign: "center", position: "relative" }}>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50% 50% 50% 0",
-                  transform: "rotate(-45deg)",
-                  background: "#F44336",
-                  border: "3px solid #fff",
-                  boxShadow: "0 4px 12px rgba(0,0,0,0.4)",
-                  margin: "0 auto",
-                }}
-              />
-            </div>
-          </AdvancedMarker>
+          <Marker
+            position={{ lat: dropoffLat!, lng: dropoffLng! }}
+            title={dropoffLabel}
+            icon={{
+              url:
+                "data:image/svg+xml," +
+                encodeURIComponent(
+                  '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="36">' +
+                    '<path d="M14 1C7.92 1 3 5.92 3 12c0 9 11 23 11 23s11-14 11-23C25 5.92 20.08 1 14 1z"' +
+                    ' fill="#F44336" stroke="#fff" stroke-width="2"/>' +
+                    '<circle cx="14" cy="12" r="4" fill="#fff"/>' +
+                  "</svg>",
+                ),
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              scaledSize: { width: 28, height: 36 } as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              anchor: { x: 14, y: 36 } as any,
+            }}
+          />
         )}
 
         {/* Additional markers/overlays passed by parent (e.g. live DriverMarker) */}

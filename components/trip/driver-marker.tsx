@@ -1,6 +1,6 @@
 "use client"
 
-import { AdvancedMarker } from "@vis.gl/react-google-maps"
+import { Marker } from "@vis.gl/react-google-maps"
 
 interface DriverMarkerProps {
   lat: number
@@ -10,30 +10,33 @@ interface DriverMarkerProps {
 
 /**
  * Car icon marker that rotates based on driver heading.
+ * Uses legacy Marker (no Map ID required) with an inline SVG icon.
  */
 export function DriverMarker({ lat, lng, heading }: DriverMarkerProps) {
   const rotation = heading ?? 0
 
+  const svgIcon =
+    "data:image/svg+xml," +
+    encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40">` +
+        `<g transform="rotate(${rotation} 20 20)">` +
+        `<circle cx="20" cy="20" r="18" fill="#1565C0" stroke="#fff" stroke-width="3"/>` +
+        `<text x="20" y="26" text-anchor="middle" font-size="18">🚗</text>` +
+        `</g>` +
+        `</svg>`,
+    )
+
   return (
-    <AdvancedMarker position={{ lat, lng }}>
-      <div
-        style={{
-          transform: `rotate(${rotation}deg)`,
-          width: 36,
-          height: 36,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "#1565C0",
-          borderRadius: "50%",
-          border: "3px solid #fff",
-          boxShadow: "0 0 0 4px rgba(79,195,247,0.35), 0 4px 16px rgba(0,0,0,0.5)",
-          fontSize: 18,
-        }}
-        aria-label="Driver location"
-      >
-        🚗
-      </div>
-    </AdvancedMarker>
+    <Marker
+      position={{ lat, lng }}
+      title="Driver location"
+      icon={{
+        url: svgIcon,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        scaledSize: { width: 40, height: 40 } as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        anchor: { x: 20, y: 20 } as any,
+      }}
+    />
   )
 }
