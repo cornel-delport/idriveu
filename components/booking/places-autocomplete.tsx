@@ -2,18 +2,16 @@
 
 /**
  * PlacesAutocomplete
- * Wraps the Google Maps Places API (New) to provide a styled, mobile-first
- * address-search input with a dropdown suggestions list.
+ * Styled address-search input with dropdown suggestions.
  *
- * Uses AutocompleteSuggestion + Place.fetchFields — the APIs required for
- * Google Cloud projects created after March 1, 2025 (legacy AutocompleteService
- * and PlacesService are not available to new customers).
+ * Calls server-side API routes (/api/places/autocomplete and /api/places/details)
+ * which proxy to Google's Places API (New) with a fallback to the legacy Places API.
+ * No @vis.gl/react-google-maps library required for autocomplete functionality.
  *
- * Requires <APIProvider apiKey={...}> somewhere above in the tree.
+ * Can be rendered inside or outside <APIProvider> — makes no difference.
  */
 
 import { useState, useCallback, useEffect, useRef } from "react"
-import { useMapsLibrary } from "@vis.gl/react-google-maps"
 import { MapPin, CircleDot, X, Loader2, Navigation } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -37,18 +35,11 @@ interface PlacesAutocompleteProps {
   locating?: boolean
 }
 
-// Plettenberg Bay bias centre — keeps suggestions local by default
-const PLETT_CENTRE = { lat: -34.0527, lng: 23.3716 }
-const BIAS_RADIUS_M = 80_000 // 80 km covers George / Cape Town airports
-
-// Loose shape we need from a PlacePrediction (avoids @types/google.maps dep)
-interface Prediction {
+interface Suggestion {
   placeId: string
-  text: { toString(): string }
-  mainText?: { toString(): string }
-  secondaryText?: { toString(): string }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  toPlace(): any
+  mainText: string
+  secondaryText: string
+  fullText: string
 }
 
 export function PlacesAutocomplete({
@@ -61,12 +52,8 @@ export function PlacesAutocomplete({
   onUseCurrentLocation,
   locating = false,
 }: PlacesAutocompleteProps) {
-  // Load the "places" library from the Maps JS SDK
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const placesLib = useMapsLibrary("places") as any
-
   const [inputValue, setInputValue] = useState(value)
-  const [predictions, setPredictions] = useState<Prediction[]>([])
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [activeIndex, setActiveIndex] = useState(-1)
@@ -79,65 +66,36 @@ export function PlacesAutocomplete({
     setInputValue(value)
   }, [value])
 
-  const fetchPredictions = useCallback(
-    async (text: string) => {
-      if (!placesLib) return
-      if (text.trim().length < 2) {
-        setPredictions([])
-        setOpen(false)
-        return
+  const fetchSuggestions = useCallback(async (text: string) => {
+    if (text.trim().length < 2) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `/api/places/autocomplete?q=${encodeURIComponent(text)}&lang=en`,
+      )
+      if (!res.ok) throw new Error(`Autocomplete API returned ${res.status}`)
+
+      const data = (await res.json()) as { results: Suggestion[] }
+      const items = data.results ?? []
+
+      setSuggestions(items)
+      setActiveIndex(-1)
+      setOpen(true) // keep open to show results OR "no results" message
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[PlacesAutocomplete] fetchSuggestions failed:", err)
       }
-
-      // Access the new Places API class from the loaded library.
-      // Try placesLib first (guaranteed loaded), fall back to window.google as safety net.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const globalGoogle = typeof window !== "undefined" ? (window as any).google : undefined
-      const AutocompleteSuggestion =
-        placesLib.AutocompleteSuggestion ??
-        globalGoogle?.maps?.places?.AutocompleteSuggestion
-
-      if (!AutocompleteSuggestion) {
-        if (process.env.NODE_ENV !== "production") {
-          console.warn(
-            "[PlacesAutocomplete] AutocompleteSuggestion not available. " +
-              "Make sure 'Places API (New)' is enabled in Google Cloud Console.",
-          )
-        }
-        return
-      }
-
-      setLoading(true)
-      try {
-        const { suggestions } =
-          await AutocompleteSuggestion.fetchAutocompleteSuggestions({
-            input: text,
-            includedRegionCodes: ["za"],
-            // Bias (not restrict) so nearby airports work too
-            locationBias: {
-              center: PLETT_CENTRE,
-              radius: BIAS_RADIUS_M,
-            },
-          })
-
-        const preds: Prediction[] = (suggestions as Array<{ placePrediction: Prediction | null }>)
-          .filter((s) => s.placePrediction != null)
-          .map((s) => s.placePrediction!)
-
-        setPredictions(preds)
-        setActiveIndex(-1)
-        setOpen(preds.length > 0)
-      } catch (err) {
-        if (process.env.NODE_ENV !== "production") {
-          console.error("[PlacesAutocomplete] fetchAutocompleteSuggestions failed:", err)
-        }
-        setPredictions([])
-        setOpen(false)
-      } finally {
-        setLoading(false)
-      }
-    },
-    [placesLib],
-  )
+      setSuggestions([])
+      setOpen(false)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     const text = e.target.value
@@ -145,53 +103,63 @@ export function PlacesAutocomplete({
     // Propagate raw text immediately so wizard state stays in sync
     onChange({ address: text })
 
-    // Debounce the API call
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => fetchPredictions(text), 280)
+    debounceRef.current = setTimeout(() => fetchSuggestions(text), 280)
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (!open || predictions.length === 0) return
+    if (!open || suggestions.length === 0) return
 
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, predictions.length - 1))
+      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1))
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
       setActiveIndex((i) => Math.max(i - 1, 0))
     } else if (e.key === "Enter" && activeIndex >= 0) {
       e.preventDefault()
-      handleSelect(predictions[activeIndex])
+      handleSelect(suggestions[activeIndex])
     } else if (e.key === "Escape") {
       setOpen(false)
       setActiveIndex(-1)
     }
   }
 
-  async function handleSelect(pred: Prediction) {
-    const formatted = pred.text.toString()
-    setInputValue(formatted)
+  async function handleSelect(suggestion: Suggestion) {
+    const displayText = suggestion.fullText || suggestion.mainText
+    setInputValue(displayText)
     setOpen(false)
-    setPredictions([])
+    setSuggestions([])
     setActiveIndex(-1)
 
+    // Immediately give the parent the address text so the UI feels instant
+    onChange({ address: displayText, placeId: suggestion.placeId })
+
+    // Then fetch lat/lng in the background
     try {
-      const place = pred.toPlace()
-      await place.fetchFields({ fields: ["location", "formattedAddress"] })
+      const res = await fetch(
+        `/api/places/details?id=${encodeURIComponent(suggestion.placeId)}`,
+      )
+      if (!res.ok) throw new Error(`Details API returned ${res.status}`)
+
+      const data = (await res.json()) as { lat: number; lng: number; address: string }
       onChange({
-        address: place.formattedAddress ?? formatted,
-        lat: place.location?.lat(),
-        lng: place.location?.lng(),
-        placeId: pred.placeId,
+        address: data.address || displayText,
+        lat: data.lat,
+        lng: data.lng,
+        placeId: suggestion.placeId,
       })
-    } catch {
-      onChange({ address: formatted })
+    } catch (err) {
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[PlacesAutocomplete] handleSelect details fetch failed:", err)
+      }
+      // Keep the address-only result already sent above
     }
   }
 
   function handleClear() {
     setInputValue("")
-    setPredictions([])
+    setSuggestions([])
     setOpen(false)
     setActiveIndex(-1)
     onChange({ address: "" })
@@ -232,15 +200,20 @@ export function PlacesAutocomplete({
               onChange={handleChange}
               onKeyDown={handleKeyDown}
               onFocus={() => {
-                if (inputValue.trim().length >= 2 && predictions.length > 0) {
+                if (inputValue.trim().length >= 2 && suggestions.length > 0) {
                   setOpen(true)
                 } else if (inputValue.trim().length >= 2) {
-                  // Re-fetch if we have text but no predictions cached
-                  fetchPredictions(inputValue)
+                  // Re-fetch if we have text but no suggestions cached
+                  fetchSuggestions(inputValue)
                 }
               }}
               // Delay close so mousedown on suggestion fires first
-              onBlur={() => setTimeout(() => { setOpen(false); setActiveIndex(-1) }, 180)}
+              onBlur={() =>
+                setTimeout(() => {
+                  setOpen(false)
+                  setActiveIndex(-1)
+                }, 180)
+              }
               placeholder={placeholder}
               autoComplete="off"
               autoCorrect="off"
@@ -280,18 +253,18 @@ export function PlacesAutocomplete({
       </label>
 
       {/* Suggestions dropdown */}
-      {open && predictions.length > 0 && (
+      {open && suggestions.length > 0 && (
         <ul
           role="listbox"
           className="absolute left-0 right-0 top-full z-[200] mt-1.5 overflow-hidden rounded-2xl border border-border bg-card shadow-[0_8px_40px_-8px_rgba(0,0,0,0.35)]"
         >
-          {predictions.map((pred, idx) => (
-            <li key={pred.placeId} role="option" aria-selected={activeIndex === idx}>
+          {suggestions.map((s, idx) => (
+            <li key={s.placeId} role="option" aria-selected={activeIndex === idx}>
               <button
                 type="button"
                 onMouseDown={(e) => {
                   e.preventDefault()
-                  handleSelect(pred)
+                  handleSelect(s)
                 }}
                 className={cn(
                   "flex w-full items-start gap-3 px-4 py-3 text-left transition-colors",
@@ -303,20 +276,38 @@ export function PlacesAutocomplete({
                 <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary/70" />
                 <div className="min-w-0">
                   <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
-                    {pred.mainText?.toString()}
+                    {s.mainText}
                   </p>
-                  <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                    {pred.secondaryText?.toString()}
-                  </p>
+                  {s.secondaryText && (
+                    <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                      {s.secondaryText}
+                    </p>
+                  )}
                 </div>
               </button>
             </li>
           ))}
-          {/* Required attribution */}
+
+          {/* Required Google attribution */}
           <li className="flex items-center justify-end border-t border-border/40 px-4 py-1.5">
             <span className="text-[10px] text-muted-foreground/60">Powered by Google</span>
           </li>
         </ul>
+      )}
+
+      {/* Loading state — shown when fetching and no previous suggestions to show */}
+      {loading && suggestions.length === 0 && inputValue.trim().length >= 2 && (
+        <div className="absolute left-0 right-0 top-full z-[200] mt-1.5 flex items-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.35)]">
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+          <span className="text-[13px] text-muted-foreground">Searching…</span>
+        </div>
+      )}
+
+      {/* No results state */}
+      {!loading && open && suggestions.length === 0 && inputValue.trim().length >= 2 && (
+        <div className="absolute left-0 right-0 top-full z-[200] mt-1.5 rounded-2xl border border-border bg-card px-4 py-3 shadow-[0_8px_40px_-8px_rgba(0,0,0,0.35)]">
+          <p className="text-[13px] text-muted-foreground">No results found</p>
+        </div>
       )}
     </div>
   )
