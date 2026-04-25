@@ -25,6 +25,8 @@ interface RouteMapProps {
   routeDestinationLng?: number
   /** When true, skip DirectionsService and show only markers */
   noRoute?: boolean
+  /** Allow the user to pan/zoom the map (default: locked) */
+  interactive?: boolean
   /** Children rendered inside the <Map> component (e.g. DriverMarker) */
   children?: ReactNode
 }
@@ -170,9 +172,10 @@ export function RouteMap({
   routeDestinationLat,
   routeDestinationLng,
   noRoute = false,
+  interactive = false,
   children,
 }: RouteMapProps) {
-  const h = variant === "full" ? "h-[50vh] min-h-[340px]" : "h-44"
+  const h = variant === "full" ? "h-[52vh] min-h-[360px]" : "h-44"
 
   const hasPickup = pickupLat !== undefined && pickupLng !== undefined
   const hasDropoff = dropoffLat !== undefined && dropoffLng !== undefined
@@ -210,7 +213,7 @@ export function RouteMap({
         defaultZoom={zoom}
         mapTypeId="satellite"
         disableDefaultUI
-        gestureHandling="none"
+        gestureHandling={interactive ? "cooperative" : "none"}
         style={{ width: "100%", height: "100%" }}
       >
         {/* Camera controller — pans/zooms when pickup/dropoff change */}

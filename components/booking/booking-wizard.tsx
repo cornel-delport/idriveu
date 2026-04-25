@@ -17,6 +17,10 @@ import {
   Baby,
   ShieldCheck,
   CheckCircle2,
+  CircleDot,
+  Navigation,
+  ChevronRight,
+  Pencil,
 } from "lucide-react"
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps"
 import { useSession } from "next-auth/react"
@@ -65,6 +69,7 @@ export function BookingWizard() {
   const router = useRouter()
   const params = useSearchParams()
   const [step, setStep] = useState<Step>(0)
+  const [routeConfirmed, setRouteConfirmed] = useState(false)
   const { data: session } = useSession()
 
   const defaults = useMemo(() => {
@@ -131,14 +136,23 @@ export function BookingWizard() {
     else setStep((s) => Math.max(0, (s - 1) as Step))
   }
 
+  // Reset route confirmation whenever pickup or dropoff address changes
+  useEffect(() => {
+    setRouteConfirmed(false)
+  }, [state.pickup.address, state.dropoff.address])
+
   const canProceed = useMemo(() => {
     if (step === 0) return Boolean(state.serviceId)
-    if (step === 1)
-      return state.pickup.address.length > 1 && state.dropoff.address.length > 1
+    if (step === 1) {
+      const hasBoth = state.pickup.address.length > 1 && state.dropoff.address.length > 1
+      // If both coords are resolved from autocomplete, require explicit acceptance
+      const hasBothCoords = !!(state.pickup.lat && state.dropoff.lat)
+      return hasBoth && (hasBothCoords ? routeConfirmed : true)
+    }
     if (step === 2) return Boolean(state.date && state.time)
     if (step === 3) return true
     return true
-  }, [step, state])
+  }, [step, state, routeConfirmed])
 
   // Pre-fill contact details from session when it loads
   useEffect(() => {
@@ -259,6 +273,10 @@ export function BookingWizard() {
             onPickup={(loc) => update("pickup", loc)}
             onDropoff={(loc) => update("dropoff", loc)}
             onStops={(locs) => update("stops", locs)}
+            onAcceptRoute={() => {
+              setRouteConfirmed(true)
+              next()
+            }}
           />
         )}
         {step === 2 && (
@@ -382,6 +400,21 @@ function StepService({
   )
 }
 
+/** Straight-line distance in km between two coords, with 1.3× road factor */
+function haversineKm(
+  lat1: number, lng1: number,
+  lat2: number, lng2: number,
+): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.3
+}
+
 function StepRoute({
   pickup,
   dropoff,
@@ -389,6 +422,7 @@ function StepRoute({
   onPickup,
   onDropoff,
   onStops,
+  onAcceptRoute,
 }: {
   pickup: Loc
   dropoff: Loc
@@ -396,9 +430,12 @@ function StepRoute({
   onPickup: (loc: PlaceResult) => void
   onDropoff: (loc: PlaceResult) => void
   onStops: (locs: Loc[]) => void
+  onAcceptRoute: () => void
 }) {
   const geocodingLib = useMapsLibrary("geocoding")
   const [locating, setLocating] = useState(false)
+  // When true, editing mode is shown even if both coords are available
+  const [editing, setEditing] = useState(false)
 
   /** Reverse-geocode a lat/lng and update the pickup field */
   async function geolocate() {
@@ -408,7 +445,6 @@ function StepRoute({
       (pos) => {
         const { latitude: lat, longitude: lng } = pos.coords
         if (!geocodingLib) {
-          // Library not loaded yet — just store raw coords
           onPickup({ address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng })
           setLocating(false)
           return
@@ -417,11 +453,7 @@ function StepRoute({
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
           setLocating(false)
           if (status === "OK" && results?.[0]) {
-            onPickup({
-              address: results[0].formatted_address,
-              lat,
-              lng,
-            })
+            onPickup({ address: results[0].formatted_address, lat, lng })
           } else {
             onPickup({ address: `${lat.toFixed(5)}, ${lng.toFixed(5)}`, lat, lng })
           }
@@ -432,13 +464,16 @@ function StepRoute({
     )
   }
 
-  // Auto-geolocate when the step mounts if pickup is still empty
+  // Auto-geolocate on mount if pickup is empty
   useEffect(() => {
-    if (!pickup.address) {
-      geolocate()
-    }
+    if (!pickup.address) geolocate()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // When either location changes, drop out of review and back into editing
+  useEffect(() => {
+    setEditing(false)
+  }, [pickup.address, dropoff.address])
 
   function addStop() {
     onStops([...stops, { address: "" }])
@@ -452,17 +487,20 @@ function StepRoute({
     onStops(stops.filter((_, idx) => idx !== i))
   }
 
+  // Route is reviewable when both points have been resolved from autocomplete
+  const hasRoute = !!(pickup.lat && pickup.lng && dropoff.lat && dropoff.lng)
+  const inReview = hasRoute && !editing
+
+  // Rough estimates for the preview card
+  const estKm = hasRoute
+    ? haversineKm(pickup.lat!, pickup.lng!, dropoff.lat!, dropoff.lng!)
+    : 0
+  const estMins = estKm ? Math.round(estKm * 2.3) : 0
+
   return (
     <section>
-      <h1 className="text-[26px] font-semibold leading-tight tracking-tight">
-        Where to?
-      </h1>
-      <p className="mt-1 text-[14px] text-muted-foreground">
-        Search a restaurant, business or address.
-      </p>
-
-      {/* Map preview */}
-      <div className="mt-4">
+      {/* Full-height map — always visible */}
+      <div className={cn("transition-all duration-300", inReview ? "-mx-4" : "mt-0")}>
         <RouteMap
           variant="full"
           pickupLabel={pickup.address || "Pickup location"}
@@ -471,58 +509,158 @@ function StepRoute({
           pickupLng={pickup.lng}
           dropoffLat={dropoff.lat}
           dropoffLng={dropoff.lng}
+          interactive={inReview}
+          className={cn(
+            "transition-all duration-300",
+            inReview ? "rounded-none h-[55vh] min-h-[380px]" : "rounded-3xl mt-4",
+          )}
         />
       </div>
 
-      {/* Address inputs with Places Autocomplete */}
-      <div className="mt-4 flex flex-col gap-2 rounded-3xl border border-border bg-card p-3">
-        <PlacesAutocomplete
-          value={pickup.address}
-          onChange={onPickup}
-          label="Pickup"
-          icon="pickup"
-          placeholder="e.g. The Lookout Deck, Plett"
-          onUseCurrentLocation={geolocate}
-          locating={locating}
-        />
-
-        {stops.map((s, i) => (
-          <div key={i} className="flex items-center gap-2">
-            <PlacesAutocomplete
-              value={s.address}
-              onChange={(loc) => updateStop(i, loc)}
-              label={`Stop ${i + 1}`}
-              icon="stop"
-              placeholder="Add a stop"
-              className="flex-1"
-            />
+      {inReview ? (
+        /* ── Route Review Card ───────────────────────────────────────── */
+        <div className="mt-3 overflow-hidden rounded-3xl border border-border bg-card">
+          {/* Header row */}
+          <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
+            <span className="text-[13px] font-semibold text-foreground">
+              Route Preview
+            </span>
             <button
               type="button"
-              onClick={() => removeStop(i)}
-              aria-label="Remove stop"
-              className="tap mt-0 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-muted-foreground"
+              onClick={() => setEditing(true)}
+              className="flex items-center gap-1 text-[12px] font-medium text-primary"
             >
-              <Trash2 className="h-4 w-4" />
+              <Pencil className="h-3 w-3" />
+              Edit
             </button>
           </div>
-        ))}
 
-        <PlacesAutocomplete
-          value={dropoff.address}
-          onChange={onDropoff}
-          label="Drop off"
-          icon="dropoff"
-          placeholder="e.g. 14 Cormorant Drive, Plett"
-        />
+          {/* Locations summary */}
+          <div className="px-4 py-3">
+            <div className="flex items-start gap-3">
+              {/* Icon spine */}
+              <div className="flex flex-col items-center pt-0.5">
+                <CircleDot className="h-4 w-4 shrink-0 text-primary" />
+                <div className="my-1 h-6 w-px bg-border" />
+                <MapPin className="h-4 w-4 shrink-0 text-rose-500" />
+              </div>
+              {/* Addresses */}
+              <div className="min-w-0 flex-1 space-y-2">
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Pickup
+                  </p>
+                  <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
+                    {pickup.address}
+                  </p>
+                </div>
+                {stops.filter((s) => s.address).map((s, i) => (
+                  <div key={i}>
+                    <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                      Stop {i + 1}
+                    </p>
+                    <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
+                      {s.address}
+                    </p>
+                  </div>
+                ))}
+                <div>
+                  <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                    Drop off
+                  </p>
+                  <p className="truncate text-[13px] font-semibold leading-tight text-foreground">
+                    {dropoff.address}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-        <button
-          type="button"
-          onClick={addStop}
-          className="tap inline-flex h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-[12px] font-semibold text-primary"
-        >
-          <Plus className="h-4 w-4" /> Add a stop
-        </button>
-      </div>
+          {/* Stats row */}
+          <div className="flex gap-2 border-t border-border/50 px-4 py-3">
+            <span className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-[12px] font-semibold">
+              <Navigation className="h-3.5 w-3.5 text-primary" />
+              ≈ {estKm.toFixed(1)} km
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-[12px] font-semibold">
+              <Clock className="h-3.5 w-3.5 text-primary" />
+              ~ {estMins} min
+            </span>
+          </div>
+
+          {/* Accept button */}
+          <div className="px-4 pb-4">
+            <button
+              type="button"
+              onClick={onAcceptRoute}
+              className="tap btn-glow-strong inline-flex h-13 w-full items-center justify-between rounded-2xl px-5 py-3.5 text-[15px] font-semibold"
+            >
+              <span>Accept this route</span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15">
+                <ChevronRight className="h-4 w-4" />
+              </span>
+            </button>
+          </div>
+        </div>
+      ) : (
+        /* ── Address Input Card ──────────────────────────────────────── */
+        <>
+          <p className="mt-4 text-[14px] text-muted-foreground">
+            {pickup.address
+              ? "Now search your destination."
+              : "Set your pickup — then search your destination."}
+          </p>
+
+          <div className="mt-3 flex flex-col gap-2 rounded-3xl border border-border bg-card p-3">
+            <PlacesAutocomplete
+              value={pickup.address}
+              onChange={onPickup}
+              label="Pickup"
+              icon="pickup"
+              placeholder="e.g. The Lookout Deck, Plett"
+              onUseCurrentLocation={geolocate}
+              locating={locating}
+            />
+
+            {stops.map((s, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <PlacesAutocomplete
+                  value={s.address}
+                  onChange={(loc) => updateStop(i, loc)}
+                  label={`Stop ${i + 1}`}
+                  icon="stop"
+                  placeholder="Add a stop"
+                  className="flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeStop(i)}
+                  aria-label="Remove stop"
+                  className="tap flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary text-muted-foreground"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            <PlacesAutocomplete
+              value={dropoff.address}
+              onChange={onDropoff}
+              label="Drop off"
+              icon="dropoff"
+              placeholder="e.g. 14 Cormorant Drive, Plett"
+            />
+
+            <button
+              type="button"
+              onClick={addStop}
+              className="tap inline-flex h-10 items-center gap-2 rounded-full bg-primary/10 px-3 text-[12px] font-semibold text-primary"
+            >
+              <Plus className="h-4 w-4" /> Add a stop
+            </button>
+          </div>
+        </>
+      )}
     </section>
   )
 }
