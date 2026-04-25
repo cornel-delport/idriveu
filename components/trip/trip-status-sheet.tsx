@@ -1,65 +1,111 @@
 "use client"
 
-import { Phone, MapPin, Car, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { Phone, MapPin, Car, Clock, CheckCircle, CheckCircle2, AlertCircle, Navigation, Route } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { BookingStatus } from "@/lib/types"
 
+// ─── Props (new shape + legacy flat props for backwards compat) ──────────────
+
 interface TripStatusSheetProps {
-  status: BookingStatus
+  /** New structured booking object */
+  booking?: {
+    id: string
+    reference: string
+    status: string
+    pickupAddress: string
+    dropoffAddress: string
+    estimatedPrice: number
+    finalPrice?: number | null
+    driverName?: string | null
+    driverPhone?: string | null
+  }
+  /** ETA in minutes */
+  eta?: number | null
+
+  // ── Legacy flat props (kept for backwards compat) ──────────────────────────
+  status?: BookingStatus
   driverName?: string | null
   driverPhone?: string | null
-  pickupAddress: string
-  dropoffAddress: string
+  pickupAddress?: string
+  dropoffAddress?: string
   etaMinutes?: number | null
   onCancel?: () => void
+
   className?: string
 }
 
+// ─── Status config ───────────────────────────────────────────────────────────
+
 const STATUS_CONFIG: Record<
-  BookingStatus,
+  string,
   { title: string; body: string; icon: React.ElementType; pulse?: boolean }
 > = {
-  draft:             { title: "Preparing booking",    body: "Your booking is being prepared.",          icon: Clock },
-  pending_payment:   { title: "Awaiting payment",     body: "Complete payment to confirm your trip.",    icon: AlertCircle },
-  payment_received:  { title: "Payment received",     body: "Confirming your booking…",                 icon: Clock, pulse: true },
-  confirmed:         { title: "Finding your driver",  body: "Matching you with a nearby driver…",       icon: Car, pulse: true },
-  driver_assigned:   { title: "Driver assigned",      body: "Your driver is preparing for your trip.",  icon: Car },
-  driver_on_the_way: { title: "Driver on the way",    body: "Your driver is heading to your pickup.",   icon: Car },
-  arrived:           { title: "Driver has arrived",   body: "Your driver is waiting at your pickup.",   icon: MapPin },
-  in_progress:       { title: "Trip in progress",     body: "On the way to your destination.",          icon: Car },
-  completed:         { title: "Trip complete",        body: "You've arrived at your destination.",      icon: CheckCircle2 },
-  cancelled:         { title: "Booking cancelled",    body: "This booking has been cancelled.",         icon: AlertCircle },
-  refund_requested:  { title: "Refund requested",     body: "Your refund is being processed.",          icon: Clock },
-  refunded:          { title: "Refund complete",      body: "Your refund has been issued.",             icon: CheckCircle2 },
+  draft:               { title: "Preparing booking",      body: "Your booking is being prepared.",         icon: Clock },
+  pending_payment:     { title: "Awaiting payment",       body: "Complete payment to confirm your trip.",   icon: AlertCircle },
+  payment_received:    { title: "Payment received",       body: "Confirming your booking…",                icon: Clock, pulse: true },
+  confirmed:           { title: "Finding your driver",    body: "Matching you with a nearby driver…",      icon: Car, pulse: true },
+  driver_assigned:     { title: "Driver assigned",        body: "Your driver is preparing for your trip.", icon: Car },
+  driver_on_the_way:   { title: "Driver on the way",      body: "Your driver is heading to your pickup.",  icon: Navigation },
+  arrived:             { title: "Driver has arrived!",    body: "Your driver is waiting at your pickup.",  icon: MapPin, pulse: true },
+  passenger_collected: { title: "On your way",            body: "Heading to your destination.",            icon: CheckCircle },
+  in_progress:         { title: "Trip in progress",       body: "On the way to your destination.",         icon: Route },
+  completed:           { title: "Trip completed!",        body: "You've arrived at your destination.",     icon: CheckCircle2 },
+  cancelled:           { title: "Booking cancelled",      body: "This booking has been cancelled.",        icon: AlertCircle },
+  refund_requested:    { title: "Refund requested",       body: "Your refund is being processed.",         icon: Clock },
+  refunded:            { title: "Refund complete",        body: "Your refund has been issued.",            icon: CheckCircle2 },
 }
 
-const DRIVER_VISIBLE_STATUSES: BookingStatus[] = [
+const DRIVER_VISIBLE_STATUSES = new Set([
   "driver_assigned",
   "driver_on_the_way",
   "arrived",
+  "passenger_collected",
   "in_progress",
   "completed",
-]
+])
+
+const CANCEL_VISIBLE_STATUSES = new Set([
+  "confirmed",
+  "driver_assigned",
+  "driver_on_the_way",
+])
+
+function formatZAR(rands: number): string {
+  return `R ${rands.toFixed(2)}`
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export function TripStatusSheet({
-  status,
-  driverName,
-  driverPhone,
-  pickupAddress,
-  dropoffAddress,
+  booking,
+  eta,
+  // legacy flat props
+  status: legacyStatus,
+  driverName: legacyDriverName,
+  driverPhone: legacyDriverPhone,
+  pickupAddress: legacyPickup,
+  dropoffAddress: legacyDropoff,
   etaMinutes,
   onCancel,
   className,
 }: TripStatusSheetProps) {
-  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG.confirmed
+  // Resolve values — prefer booking object, fall back to legacy flat props
+  const status        = (booking?.status ?? legacyStatus ?? "confirmed") as string
+  const driverName    = booking?.driverName ?? legacyDriverName
+  const driverPhone   = booking?.driverPhone ?? legacyDriverPhone
+  const pickupAddress = booking?.pickupAddress ?? legacyPickup ?? ""
+  const dropoffAddress= booking?.dropoffAddress ?? legacyDropoff ?? ""
+  const etaDisplay    = eta ?? etaMinutes
+
+  const config = STATUS_CONFIG[status] ?? STATUS_CONFIG["confirmed"]
   const StatusIcon = config.icon
-  const showDriver = Boolean(driverName) && DRIVER_VISIBLE_STATUSES.includes(status)
-  const showCancel = Boolean(onCancel) && ["confirmed","driver_assigned","driver_on_the_way"].includes(status)
+  const showDriver = Boolean(driverName) && DRIVER_VISIBLE_STATUSES.has(status)
+  const showCancel = Boolean(onCancel) && CANCEL_VISIBLE_STATUSES.has(status)
 
   return (
     <div
       className={cn(
-        "glass-strong rounded-t-3xl border-t border-border p-5 pb-safe",
+        "glass-strong rounded-t-3xl border-t border-border bg-card/90 backdrop-blur p-5 pb-safe",
         className,
       )}
     >
@@ -79,8 +125,8 @@ export function TripStatusSheet({
           </p>
           <p className="mt-0.5 text-[13px] text-muted-foreground">
             {config.body}
-            {etaMinutes != null && (
-              <span className="ml-1 font-medium text-primary">· {etaMinutes} min away</span>
+            {etaDisplay != null && (
+              <span className="ml-1 font-medium text-primary">· {etaDisplay} min away</span>
             )}
           </p>
         </div>
@@ -90,13 +136,15 @@ export function TripStatusSheet({
       {showDriver && (
         <div className="mt-4 flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div>
-            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Driver</p>
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+              Driver
+            </p>
             <p className="mt-0.5 text-[14px] font-semibold text-foreground">{driverName}</p>
           </div>
           {driverPhone && (
             <a
               href={`tel:${driverPhone}`}
-              className="tap flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground"
+              className="tap flex h-11 w-11 items-center justify-center rounded-full bg-primary text-primary-foreground"
               aria-label={`Call ${driverName}`}
             >
               <Phone className="h-4 w-4" />
@@ -117,6 +165,20 @@ export function TripStatusSheet({
           <span className="truncate text-foreground">{dropoffAddress}</span>
         </div>
       </div>
+
+      {/* Price + reference (when booking object provided) */}
+      {booking && (
+        <div className="mt-3 flex items-center justify-between px-1">
+          <p className="text-[12px] text-muted-foreground">
+            Ref <span className="font-medium text-foreground">{booking.reference}</span>
+          </p>
+          <p className="text-[13px] font-semibold text-foreground">
+            {booking.finalPrice != null
+              ? formatZAR(booking.finalPrice)
+              : formatZAR(booking.estimatedPrice)}
+          </p>
+        </div>
+      )}
 
       {/* Cancel button */}
       {showCancel && (

@@ -16,7 +16,8 @@ import type { BookingStatus, PaymentStatus } from '@/lib/types'
 
 export default async function AdminDashboard() {
   const session = await auth()
-  if (session?.user?.role !== 'admin') redirect('/')
+  const role = session?.user?.role
+  if (role !== 'admin' && role !== 'super_admin') redirect('/')
 
   const [bookings, drivers, revenueAgg] = await Promise.all([
     db.booking.findMany({

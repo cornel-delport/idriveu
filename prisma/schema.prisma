@@ -7,10 +7,13 @@ datasource db {
   provider = "postgresql"
 }
 
+// ── Enums ──────────────────────────────────────────────────────────────────
+
 enum UserRole {
   customer
   driver
   admin
+  super_admin
 }
 
 enum BookingStatus {
@@ -21,6 +24,7 @@ enum BookingStatus {
   driver_assigned
   driver_on_the_way
   arrived
+  passenger_collected
   in_progress
   completed
   cancelled
@@ -45,32 +49,8 @@ enum PaymentMethod {
   cash
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified DateTime?
-  phone         String?
-  passwordHash  String?
-  role          UserRole  @default(customer)
-  googleId      String?   @unique
-  avatar        String?
-  image         String?   // NextAuth compat
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+// ── Core Auth Models (NextAuth required) ───────────────────────────────────
 
-  accounts           Account[]
-  sessions           Session[]
-  driverProfile      DriverProfile?
-  bookingsAsCustomer Booking[]      @relation("CustomerBookings")
-  bookingsAsDriver   Booking[]      @relation("DriverBookings")
-  savedPlaces        SavedPlace[]
-  reviews            Review[]      @relation("CustomerReviews")
-  driverReviews      Review[]      @relation("DriverReviews")
-  notifications      Notification[]
-}
-
-// NextAuth required models
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -105,31 +85,92 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-model DriverProfile {
-  id         String   @id @default(cuid())
-  userId     String   @unique
-  user       User     @relation(fields: [userId], references: [id])
-  bio        String?
-  verified   Boolean  @default(false)
-  female     Boolean  @default(false)
-  languages  String[]
-  isOnline   Boolean  @default(false)
-  rating     Float    @default(5.0)
-  totalTrips Int      @default(0)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+// ── Users ──────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  phone         String?
+  passwordHash  String?
+  role          UserRole  @default(customer)
+  status        String    @default("active") // active | suspended
+  googleId      String?   @unique
+  avatar        String?
+  image         String?   // NextAuth compat alias
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts           Account[]
+  sessions           Session[]
+  driverProfile      DriverProfile?
+  bookingsAsCustomer Booking[]       @relation("CustomerBookings")
+  bookingsAsDriver   Booking[]       @relation("DriverBookings")
+  savedPlaces        SavedPlace[]
+  reviews            Review[]        @relation("CustomerReviews")
+  driverReviews      Review[]        @relation("DriverReviews")
+  tips               Tip[]           @relation("CustomerTips")
+  notifications      Notification[]
+  roleChangesReceived RoleChangeLog[] @relation("TargetUser")
+  roleChangesActioned RoleChangeLog[] @relation("ChangedByUser")
+  auditLogs          AuditLog[]
 }
 
-model SavedPlace {
-  id      String @id @default(cuid())
-  userId  String
-  user    User   @relation(fields: [userId], references: [id])
-  label     String
-  address   String
-  lat       Float?
-  lng       Float?
-  createdAt DateTime @default(now())
+// ── Driver ─────────────────────────────────────────────────────────────────
+
+model DriverProfile {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  user              User      @relation(fields: [userId], references: [id])
+  // display & contact
+  displayName       String?
+  bio               String?
+  // status
+  driverStatus      String    @default("pending") // pending | approved | suspended
+  verified          Boolean   @default(false)
+  // attributes
+  female            Boolean   @default(false)
+  languages         String[]
+  serviceAreas      String[]
+  licenseNumber     String?
+  licenseExpiry     DateTime?
+  // performance
+  isOnline          Boolean   @default(false)
+  rating            Float     @default(5.0)
+  totalTrips        Int       @default(0)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  documents    DriverDocument[]
+  availability DriverAvailability?
+  tips         Tip[]              @relation("DriverTips")
 }
+
+model DriverDocument {
+  id              String        @id @default(cuid())
+  driverProfileId String
+  driverProfile   DriverProfile @relation(fields: [driverProfileId], references: [id])
+  documentType    String        // license | vehicle_reg | profile_photo | police_clearance
+  fileUrl         String
+  status          String        @default("pending") // pending | approved | rejected
+  uploadedAt      DateTime      @default(now())
+  reviewedBy      String?
+  reviewedAt      DateTime?
+  rejectionReason String?
+}
+
+model DriverAvailability {
+  id               String        @id @default(cuid())
+  driverProfileId  String        @unique
+  driverProfile    DriverProfile @relation(fields: [driverProfileId], references: [id])
+  status           String        @default("available") // available | busy | offline
+  currentBookingId String?
+  updatedAt        DateTime      @updatedAt
+}
+
+// ── Bookings ───────────────────────────────────────────────────────────────
 
 model Booking {
   id                   String        @id @default(cuid())
@@ -143,6 +184,7 @@ model Booking {
   statusUpdatedAt      DateTime      @default(now())
   paymentStatus        PaymentStatus @default(pending)
   paymentMethod        PaymentMethod @default(cash)
+  // locations
   pickupAddress        String
   pickupLat            Float?
   pickupLng            Float?
@@ -150,23 +192,36 @@ model Booking {
   dropoffLat           Float?
   dropoffLng           Float?
   stops                Json          @default("[]")
+  // schedule
   dateTime             DateTime
   returnTrip           Boolean       @default(false)
   returnDateTime       DateTime?
+  // passengers
   passengerCount       Int           @default(1)
   usesCustomerVehicle  Boolean       @default(true)
   requiresFemaleDriver Boolean       @default(false)
   childPickup          Boolean       @default(false)
+  // pricing
   distanceKm           Float         @default(0)
   durationMinutes      Int           @default(0)
   estimatedPrice       Int
   finalPrice           Int?
+  // timestamps
+  startedAt            DateTime?
+  arrivedAt            DateTime?
+  passengerCollectedAt DateTime?
+  completedAt          DateTime?
+  // misc
   notes                String?
   createdAt            DateTime      @default(now())
 
-  childDetail  ChildDetail?
-  review       Review?
-  whatsappLogs WhatsAppLog[]
+  childDetail   ChildDetail?
+  review        Review?
+  tip           Tip?
+  receipt       Receipt?
+  whatsappLogs  WhatsAppLog[]
+  tripEvents    TripEvent[]
+  driverLocation DriverLocation?
 }
 
 model ChildDetail {
@@ -180,6 +235,62 @@ model ChildDetail {
   instructions     String?
 }
 
+model SavedPlace {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  label     String
+  address   String
+  lat       Float?
+  lng       Float?
+  createdAt DateTime @default(now())
+}
+
+// ── Trip Events & Audit ────────────────────────────────────────────────────
+
+model TripEvent {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id])
+  actorUserId String?
+  actorRole   String?
+  eventType   String   // booking_created | status_changed | driver_assigned | location_updated | completed | etc
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id])
+  actionType  String   // assign_driver | role_change | suspend_user | approve_driver | etc
+  targetType  String?  // booking | user | driver_profile
+  targetId    String?
+  metadata    Json     @default("{}")
+  createdAt   DateTime @default(now())
+
+  @@index([actorUserId])
+  @@index([targetType, targetId])
+}
+
+model RoleChangeLog {
+  id           String   @id @default(cuid())
+  targetUserId String
+  targetUser   User     @relation("TargetUser", fields: [targetUserId], references: [id])
+  oldRole      String
+  newRole      String
+  changedById  String
+  changedBy    User     @relation("ChangedByUser", fields: [changedById], references: [id])
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  @@index([targetUserId])
+}
+
+// ── Post-trip ──────────────────────────────────────────────────────────────
+
 model Review {
   id         String   @id @default(cuid())
   bookingId  String   @unique
@@ -188,10 +299,39 @@ model Review {
   customer   User     @relation("CustomerReviews", fields: [customerId], references: [id])
   driverId   String
   driver     User     @relation("DriverReviews", fields: [driverId], references: [id])
-  rating     Int
+  rating     Int      // 1–5
   comment    String?
+  feedbackTags String[] @default([])
   createdAt  DateTime @default(now())
 }
+
+model Tip {
+  id               String    @id @default(cuid())
+  bookingId        String    @unique
+  booking          Booking   @relation(fields: [bookingId], references: [id])
+  customerId       String
+  customer         User      @relation("CustomerTips", fields: [customerId], references: [id])
+  driverProfileId  String
+  driverProfile    DriverProfile @relation("DriverTips", fields: [driverProfileId], references: [id])
+  amountCents      Int       // amount in ZAR cents
+  paymentStatus    String    @default("pending") // pending | completed | failed
+  paymentReference String?
+  createdAt        DateTime  @default(now())
+  paidAt           DateTime?
+}
+
+model Receipt {
+  id            String   @id @default(cuid())
+  bookingId     String   @unique
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  receiptNumber String   @unique
+  subtotalCents Int
+  tipCents      Int      @default(0)
+  totalCents    Int
+  createdAt     DateTime @default(now())
+}
+
+// ── Notifications & Comms ──────────────────────────────────────────────────
 
 model Notification {
   id        String   @id @default(cuid())
@@ -213,15 +353,20 @@ model WhatsAppLog {
   sentAt    DateTime @default(now())
 }
 
+// ── Config ─────────────────────────────────────────────────────────────────
+
 model PricingConfig {
   id    String @id @default(cuid())
   key   String @unique
   value String
 }
 
+// ── Live Tracking ──────────────────────────────────────────────────────────
+
 model DriverLocation {
   id        String   @id @default(cuid())
   bookingId String   @unique
+  booking   Booking  @relation(fields: [bookingId], references: [id])
   driverId  String
   lat       Float
   lng       Float
@@ -231,4 +376,6 @@ model DriverLocation {
   isOnline  Boolean  @default(true)
   updatedAt DateTime @updatedAt
   createdAt DateTime @default(now())
+
+  @@index([bookingId])
 }

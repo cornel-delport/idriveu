@@ -11,6 +11,7 @@ import {
   Car,
   BriefcaseBusiness,
   LayoutDashboard,
+  History,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,7 +25,7 @@ const customerItems = [
 const driverItems = [
   { href: '/driver', label: 'Dashboard', icon: Car },
   { href: '/driver/available', label: 'Available', icon: BriefcaseBusiness },
-  { href: '/map', label: 'Map', icon: MapIcon },
+  { href: '/driver/history', label: 'History', icon: History },
   { href: '/profile', label: 'Profile', icon: User },
 ] as const
 
