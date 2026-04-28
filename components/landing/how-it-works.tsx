@@ -31,25 +31,33 @@ export function HowItWorks() {
         Four simple steps from plans to home.
       </p>
 
-      <ol className="mt-4 flex flex-col gap-3">
+      <ol className="mt-5 flex flex-col gap-3">
         {steps.map((s, i) => {
           const Icon = s.icon
+          const isLast = i === steps.length - 1
           return (
-            <li
-              key={s.title}
-              className="flex items-start gap-3 rounded-2xl bg-secondary p-4"
-            >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-[13px] font-semibold">
-                {i + 1}
-              </span>
-              <div className="flex-1">
+            <li key={s.title} className="relative flex gap-3">
+              {/* Step indicator with connecting line */}
+              <div className="flex flex-col items-center">
+                <span className="btn-glow flex h-11 w-11 items-center justify-center rounded-full text-[14px] font-bold text-white">
+                  {i + 1}
+                </span>
+                {!isLast && (
+                  <span className="my-1 h-full w-px bg-gradient-to-b from-primary/40 to-border" />
+                )}
+              </div>
+
+              {/* Content card */}
+              <div className="mb-3 flex-1 rounded-2xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2">
-                  <Icon className="h-4 w-4 text-primary" />
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-4.5 w-4.5" strokeWidth={2} />
+                  </span>
                   <h3 className="text-[15px] font-semibold tracking-tight">
                     {s.title}
                   </h3>
                 </div>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
+                <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
                   {s.body}
                 </p>
               </div>

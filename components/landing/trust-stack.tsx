@@ -5,32 +5,38 @@ import {
   Baby,
   PhoneCall,
 } from "lucide-react"
+import { IconCard } from "@/components/ui-icon"
 
 const trust = [
   {
     icon: ShieldCheck,
     title: "Verified local drivers",
     body: "Background-checked, ID-verified, and known in Plett.",
+    tone: "success" as const,
   },
   {
     icon: CarFront,
     title: "Drive your own car",
     body: "We meet you, drive your vehicle home — nothing strange parked outside.",
+    tone: "primary" as const,
   },
   {
     icon: MoonStar,
     title: "Safe night transport",
     body: "Late nights, weddings, events — book ahead or on demand.",
+    tone: "accent" as const,
   },
   {
     icon: Baby,
     title: "Child-safe pickups",
     body: "Authorised adult confirmation and WhatsApp updates at every step.",
+    tone: "warning" as const,
   },
   {
     icon: PhoneCall,
     title: "Emergency contact",
     body: "One-tap share of your trip with a trusted person.",
+    tone: "danger" as const,
   },
 ] as const
 
@@ -44,28 +50,18 @@ export function TrustStack() {
         The little details that matter when it&apos;s your family or your car.
       </p>
 
-      <ul className="mt-4 flex flex-col gap-3">
-        {trust.map((t) => {
-          const Icon = t.icon
-          return (
-            <li
-              key={t.title}
-              className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4"
-            >
-              <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div>
-                <h3 className="text-[15px] font-semibold tracking-tight">
-                  {t.title}
-                </h3>
-                <p className="mt-0.5 text-[13px] leading-relaxed text-muted-foreground">
-                  {t.body}
-                </p>
-              </div>
-            </li>
-          )
-        })}
+      <ul className="mt-4 flex flex-col gap-2.5">
+        {trust.map((t) => (
+          <li key={t.title}>
+            <IconCard
+              icon={t.icon}
+              title={t.title}
+              description={t.body}
+              tone={t.tone}
+              surface="card"
+            />
+          </li>
+        ))}
       </ul>
     </section>
   )

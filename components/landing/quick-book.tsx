@@ -2,9 +2,18 @@
 
 import { useRouter } from "next/navigation"
 import { useMemo, useState } from "react"
-import { MapPin, CircleDot, CalendarDays, Clock, ArrowRight } from "lucide-react"
+import {
+  MapPin,
+  CircleDot,
+  CalendarDays,
+  Clock,
+  ArrowRight,
+  CarFront,
+  Sparkles,
+} from "lucide-react"
 import { services } from "@/lib/services"
 import { cn } from "@/lib/utils"
+import { IconInput, IconButton } from "@/components/ui-icon"
 
 export function QuickBook() {
   const router = useRouter()
@@ -39,61 +48,67 @@ export function QuickBook() {
     <section id="quick-book" className="px-4 pt-6">
       <form
         onSubmit={onSubmit}
-        className="rounded-3xl border border-border bg-card p-4 shadow-[0_8px_30px_-12px] shadow-primary/15"
+        className="rounded-3xl border border-border bg-card p-4 shadow-[0_8px_30px_-12px_rgba(13,71,161,0.25)]"
       >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold tracking-tight">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-[16px] font-semibold tracking-tight text-foreground">
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+            </span>
             Quick booking
           </h2>
-          <span className="text-xs text-muted-foreground">Takes 30s</span>
+          <span className="rounded-full bg-secondary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            ~30 sec
+          </span>
         </div>
 
-        {/* Pickup / Dropoff stacked with vertical connector */}
-        <div className="relative rounded-2xl bg-secondary p-3">
-          <div className="pointer-events-none absolute left-[26px] top-[42px] h-9 w-px bg-border" />
-          <FieldRow
-            icon={<CircleDot className="h-4 w-4 text-primary" />}
+        {/* Inputs */}
+        <div className="flex flex-col gap-3">
+          <IconInput
+            icon={CircleDot}
             label="Pickup"
             value={pickup}
-            onChange={setPickup}
+            onChange={(e) => setPickup(e.target.value)}
             placeholder="Current location or address"
+            tone="primary"
           />
-          <div className="my-2 ml-6 h-px bg-border" />
-          <FieldRow
-            icon={<MapPin className="h-4 w-4 text-accent-foreground" />}
-            label="Drop off"
+          <IconInput
+            icon={MapPin}
+            label="Dropoff"
             value={dropoff}
-            onChange={setDropoff}
+            onChange={(e) => setDropoff(e.target.value)}
             placeholder="Where are you going?"
+            tone="accent"
           />
-        </div>
 
-        {/* Date & time */}
-        <div className="mt-3 grid grid-cols-2 gap-3">
-          <IconInput
-            icon={<CalendarDays className="h-4 w-4 text-primary" />}
-            label="Date"
-            type="date"
-            value={date || defaults.date}
-            onChange={(v) => setDate(v)}
-          />
-          <IconInput
-            icon={<Clock className="h-4 w-4 text-primary" />}
-            label="Time"
-            type="time"
-            value={time || defaults.time}
-            onChange={(v) => setTime(v)}
-          />
+          <div className="grid grid-cols-2 gap-3">
+            <IconInput
+              icon={CalendarDays}
+              label="Date"
+              type="date"
+              value={date || defaults.date}
+              onChange={(e) => setDate(e.target.value)}
+              tone="primary"
+            />
+            <IconInput
+              icon={Clock}
+              label="Time"
+              type="time"
+              value={time || defaults.time}
+              onChange={(e) => setTime(e.target.value)}
+              tone="primary"
+            />
+          </div>
         </div>
 
         {/* Service pills */}
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Service
             </span>
           </div>
-          <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1">
+          <div className="no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {services.slice(0, 6).map((s) => {
               const active = serviceId === s.id
               const Icon = s.icon
@@ -103,13 +118,13 @@ export function QuickBook() {
                   type="button"
                   onClick={() => setServiceId(s.id)}
                   className={cn(
-                    "tap inline-flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-xs font-medium",
+                    "tap inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-[12px] font-semibold transition-colors",
                     active
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card text-foreground",
+                      ? "border-primary bg-primary text-primary-foreground shadow-[0_4px_14px_-4px_rgba(13,71,161,0.5)]"
+                      : "border-border bg-card text-foreground hover:border-primary/40 hover:bg-secondary",
                   )}
                 >
-                  <Icon className="h-3.5 w-3.5" />
+                  <Icon className="h-3.5 w-3.5" strokeWidth={2.4} />
                   {s.shortName}
                 </button>
               )
@@ -117,87 +132,23 @@ export function QuickBook() {
           </div>
         </div>
 
-        <button
-          type="submit"
-          className="tap mt-4 inline-flex h-13 w-full items-center justify-between rounded-2xl bg-primary px-5 py-3.5 text-[15px] font-semibold text-primary-foreground shadow-md"
-        >
-          <span>Book now</span>
-          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary-foreground/15">
-            <ArrowRight className="h-4 w-4" />
-          </span>
-        </button>
+        <div className="mt-5">
+          <IconButton
+            type="submit"
+            icon={CarFront}
+            iconRight={ArrowRight}
+            variant="glow"
+            size="lg"
+            fullWidth
+          >
+            Book now
+          </IconButton>
+        </div>
 
         <p className="mt-3 text-center text-[11px] text-muted-foreground">
           You&apos;re booking a private driver who can drive your own car.
         </p>
       </form>
     </section>
-  )
-}
-
-function FieldRow({
-  icon,
-  label,
-  value,
-  onChange,
-  placeholder,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder: string
-}) {
-  return (
-    <label className="flex items-center gap-3">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
-        {icon}
-      </span>
-      <span className="flex-1">
-        <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-transparent py-0.5 text-[14px] font-medium text-foreground outline-none placeholder:text-muted-foreground/70"
-        />
-      </span>
-    </label>
-  )
-}
-
-function IconInput({
-  icon,
-  label,
-  type,
-  value,
-  onChange,
-}: {
-  icon: React.ReactNode
-  label: string
-  type: string
-  value: string
-  onChange: (v: string) => void
-}) {
-  return (
-    <label className="flex items-center gap-3 rounded-2xl bg-secondary p-3">
-      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-card ring-1 ring-border">
-        {icon}
-      </span>
-      <span className="flex-1">
-        <span className="block text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-          {label}
-        </span>
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full bg-transparent py-0.5 text-[14px] font-medium text-foreground outline-none"
-        />
-      </span>
-    </label>
   )
 }
