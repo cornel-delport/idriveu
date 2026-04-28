@@ -2,13 +2,24 @@ export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { ArrowUpRight, Filter, Search, UserCog } from 'lucide-react'
+import {
+  ArrowUpRight,
+  Filter,
+  Search,
+  UserCog,
+  Users as UsersIcon,
+  Car as CarIcon,
+  ClipboardList,
+  ChevronRight,
+} from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { MobileShell } from '@/components/mobile-shell'
 import { AppTopBar } from '@/components/app-top-bar'
 import { BottomNav, BottomNavSpacer } from '@/components/bottom-nav'
 import { BookingStatusBadge, PaymentStatusBadge } from '@/components/status-badge'
+import { SignedInAs, AdminRoleSwitcher } from '@/components/role-banner'
+import { IconCard } from '@/components/ui-icon'
 import { getService } from '@/lib/services'
 import { formatZAR } from '@/lib/pricing'
 import { AdminActions } from './admin-actions'
@@ -63,7 +74,45 @@ export default async function AdminDashboard() {
   return (
     <MobileShell>
       <AppTopBar title="Admin" />
-      <main className="px-4 pt-2">
+      <main className="px-4 pt-3">
+        {/* Role banner */}
+        <SignedInAs
+          role={role as 'admin' | 'super_admin'}
+          name={session?.user?.name}
+          className="mb-3"
+        />
+
+        {/* Quick actions: management entry points */}
+        <section className="mb-4 grid grid-cols-1 gap-2">
+          <IconCard
+            icon={UsersIcon}
+            title="Manage users"
+            description="Search, change roles, suspend / reactivate"
+            href="/admin/users"
+            showChevron
+            tone="primary"
+          />
+          <IconCard
+            icon={CarIcon}
+            title="Manage drivers"
+            description="Approve, suspend, view driver profiles"
+            href="/admin/drivers"
+            showChevron
+            tone="success"
+          />
+          <IconCard
+            icon={ClipboardList}
+            title="Audit log"
+            description="Recent role changes & admin actions"
+            href="/admin/audit"
+            showChevron
+            tone="warning"
+          />
+        </section>
+
+        {/* Preview-as switcher */}
+        <AdminRoleSwitcher className="mb-5" />
+
         <section>
           <p className="text-[12px] font-medium text-muted-foreground">Overview</p>
           <h1 className="text-[26px] font-semibold leading-tight tracking-tight">

@@ -290,6 +290,95 @@ export async function upgradeToDriver(userId: string): Promise<{ ok: true } | { 
   }
 }
 
+// ── changeUserRole ────────────────────────────────────────────────────────────
+
+const VALID_ROLES = ["customer", "driver", "admin", "super_admin"] as const
+type ValidRole = (typeof VALID_ROLES)[number]
+
+/**
+ * Server-enforced role change. Only admins can call this. Logs to both
+ * roleChangeLog and auditLog. Cannot be used to escalate to super_admin
+ * unless the actor IS already a super_admin.
+ */
+export async function changeUserRole(
+  userId: string,
+  newRole: ValidRole,
+  reason?: string,
+): Promise<{ ok: true } | { error: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { error: "Not authenticated" }
+  const actorRole = (session.user as { role?: string }).role
+  if (!isAdmin(actorRole)) return { error: "Forbidden" }
+
+  if (!VALID_ROLES.includes(newRole)) return { error: "Invalid role" }
+
+  // Privilege protection: only super_admin can grant super_admin
+  if (newRole === "super_admin" && actorRole !== "super_admin") {
+    return { error: "Only a super admin can grant super admin role" }
+  }
+  // Cannot demote yourself accidentally
+  if (userId === session.user.id) {
+    return { error: "You cannot change your own role" }
+  }
+
+  try {
+    const targetUser = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    })
+    if (!targetUser) return { error: "User not found" }
+    if (targetUser.role === newRole) return { error: "User already has that role" }
+
+    // If promoting to driver, ensure DriverProfile exists
+    if (newRole === "driver") {
+      await db.driverProfile.upsert({
+        where: { userId },
+        create: {
+          userId,
+          driverStatus: "pending",
+          verified: false,
+          female: false,
+          languages: ["English"],
+          serviceAreas: [],
+        },
+        update: {},
+      })
+    }
+
+    await db.user.update({
+      where: { id: userId },
+      data: { role: newRole },
+    })
+
+    await db.roleChangeLog.create({
+      data: {
+        targetUserId: userId,
+        oldRole: targetUser.role,
+        newRole,
+        changedById: session.user.id,
+        reason: reason ?? `Role changed by admin`,
+      },
+    })
+
+    await db.auditLog.create({
+      data: {
+        actorUserId: session.user.id,
+        actionType: "role_change",
+        targetType: "user",
+        targetId: userId,
+        metadata: { oldRole: targetUser.role, newRole, reason: reason ?? null },
+      },
+    })
+
+    revalidatePath("/admin")
+    revalidatePath("/admin/users")
+    return { ok: true }
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV === "development") console.error("[changeUserRole]", err)
+    return { error: "Failed to change user role" }
+  }
+}
+
 // ── getAuditLogs ──────────────────────────────────────────────────────────────
 
 export async function getAuditLogs(limit = 50): Promise<

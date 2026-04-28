@@ -15,6 +15,7 @@ import { MobileShell } from '@/components/mobile-shell'
 import { AppTopBar } from '@/components/app-top-bar'
 import { BottomNav, BottomNavSpacer } from '@/components/bottom-nav'
 import { BookingStatusBadge, PaymentStatusBadge } from '@/components/status-badge'
+import { SignedInAs } from '@/components/role-banner'
 import type { BookingStatus, PaymentStatus } from '@/lib/types'
 import { updateBookingStatus } from '@/actions/bookings'
 import { timeAgo, formatDateTime } from '@/lib/time'
@@ -126,7 +127,10 @@ export function DriverDashboardClient({ bookings, driverName, driverRating, driv
   return (
     <MobileShell>
       <AppTopBar title="Driver" />
-      <main className="px-4 pt-2">
+      <main className="px-4 pt-3">
+        {/* Role banner */}
+        <SignedInAs role="driver" name={driverName} className="mb-4" />
+
         <section>
           <p className="text-[12px] font-medium text-muted-foreground">Sawubona,</p>
           <h1 className="text-[26px] font-semibold leading-tight tracking-tight">

@@ -28,6 +28,7 @@ import {
   IconCard,
   IconStat,
 } from "@/components/ui-icon"
+import { SignedInAs } from "@/components/role-banner"
 
 function mapBooking(b: PrismaBooking): Booking {
   return {
@@ -88,7 +89,10 @@ export default async function CustomerDashboard() {
   return (
     <MobileShell>
       <AppTopBar />
-      <main className="px-4 pt-2">
+      <main className="px-4 pt-3">
+        {/* Role banner */}
+        <SignedInAs role="customer" name={session.user.name} className="mb-4" />
+
         {/* Greeting */}
         <section>
           <p className="text-[12px] font-medium text-muted-foreground">
