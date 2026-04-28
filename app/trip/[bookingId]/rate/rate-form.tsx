@@ -4,9 +4,15 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { submitRating } from "@/actions/posttrip"
 import { RatingStars } from "@/components/trip/rating-stars"
-import { CheckCircle2 } from "lucide-react"
-import Link from "next/link"
+import {
+  CheckCircle2,
+  MessageSquare,
+  ArrowRight,
+  ChevronRight,
+  MapPin,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
+import { IconButton, IconTextarea } from "@/components/ui-icon"
 
 const FEEDBACK_TAGS = [
   "Punctual",
@@ -71,23 +77,32 @@ export function RateForm({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Trip summary */}
-      <div className="rounded-3xl bg-secondary p-4">
-        <p className="text-[12px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {reference}
+      {/* Trip summary card */}
+      <div className="rounded-3xl border border-border bg-secondary p-4">
+        <p className="flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <MapPin className="h-3 w-3" /> {reference}
         </p>
-        <p className="mt-1 text-[14px] font-medium text-foreground">{pickup}</p>
-        <p className="mt-0.5 text-[12px] text-muted-foreground">→ {dropoff}</p>
+        <div className="mt-2 flex items-start gap-3">
+          <div className="mt-1 flex flex-col items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-primary" />
+            <span className="h-6 w-px bg-border" />
+            <span className="h-2 w-2 rounded-full bg-accent" />
+          </div>
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <p className="truncate text-[13px] font-medium text-foreground">{pickup}</p>
+            <p className="truncate text-[13px] text-muted-foreground">{dropoff}</p>
+          </div>
+        </div>
       </div>
 
-      {/* Stars */}
-      <div className="flex flex-col items-center gap-3 rounded-3xl border border-border bg-card p-6">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      {/* Stars — premium dark card */}
+      <div className="card-dark flex flex-col items-center gap-3 rounded-3xl px-6 py-7">
+        <p className="text-[10px] font-semibold uppercase tracking-wider text-glow">
           How was {driverName}?
         </p>
         <RatingStars value={rating} onChange={setRating} size="lg" />
         {rating > 0 && (
-          <p className="text-[13px] font-medium text-primary">
+          <p className="text-[13px] font-semibold text-white">
             {["", "Poor", "Below average", "Average", "Good", "Excellent!"][rating]}
           </p>
         )}
@@ -120,41 +135,39 @@ export function RateForm({
       )}
 
       {/* Comment */}
-      <div>
-        <label className="mb-2 block text-[13px] font-medium text-muted-foreground">
-          Leave a comment (optional)
-        </label>
-        <textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={3}
-          placeholder="Tell us about your experience…"
-          className="w-full rounded-2xl border border-border bg-secondary px-4 py-3 text-[14px] text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-1 focus:ring-primary"
-        />
-      </div>
+      <IconTextarea
+        icon={MessageSquare}
+        label="Leave a comment (optional)"
+        rows={3}
+        placeholder="Tell us about your experience…"
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+      />
 
       {/* Submit */}
-      <button
-        type="button"
+      <IconButton
+        icon={CheckCircle2}
+        iconRight={ArrowRight}
+        variant="glow"
+        size="lg"
+        fullWidth
         onClick={handleSubmit}
-        disabled={rating === 0 || isPending}
-        className={cn(
-          "tap flex h-14 w-full items-center justify-center rounded-2xl text-[15px] font-semibold transition-opacity",
-          rating > 0
-            ? "bg-primary text-primary-foreground"
-            : "cursor-not-allowed bg-muted text-muted-foreground opacity-60",
-          isPending && "opacity-60",
-        )}
+        disabled={rating === 0}
+        loading={isPending}
+        loadingLabel="Submitting…"
       >
-        {isPending ? "Submitting…" : "Submit rating"}
-      </button>
+        Submit rating
+      </IconButton>
 
-      <Link
+      <IconButton
+        icon={ChevronRight}
+        variant="ghost"
+        size="sm"
         href={`/trip/${bookingId}/tip`}
-        className="text-center text-[13px] text-muted-foreground underline-offset-4 hover:underline"
+        className="self-center"
       >
         Skip rating
-      </Link>
+      </IconButton>
     </div>
   )
 }

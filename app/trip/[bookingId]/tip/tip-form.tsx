@@ -4,8 +4,8 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { submitTip } from "@/actions/posttrip"
 import { TipSelector } from "@/components/trip/tip-selector"
-import { Heart } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { Heart, ArrowRight, ChevronRight } from "lucide-react"
+import { IconButton } from "@/components/ui-icon"
 
 interface TipFormProps {
   bookingId: string
@@ -52,18 +52,18 @@ export function TipForm({ bookingId, driverName, reference }: TipFormProps) {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Hero */}
-      <div className="flex flex-col items-center gap-3 rounded-3xl border border-border bg-card px-6 py-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
-          <Heart className="h-8 w-8 text-primary" />
+      {/* Hero — premium dark gradient */}
+      <div className="card-dark flex flex-col items-center gap-3 rounded-3xl px-6 py-8 text-center">
+        <div className="chip-glass flex h-16 w-16 items-center justify-center rounded-full">
+          <Heart className="h-7 w-7 text-glow" />
         </div>
-        <h1 className="text-[20px] font-semibold tracking-tight text-foreground">
+        <h1 className="text-[20px] font-semibold tracking-tight text-white">
           Show {driverName} some love
         </h1>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-[13px] text-white/75">
           Tips go directly to your driver. 100%.
         </p>
-        <p className="text-[11px] text-muted-foreground/60">Ref: {reference}</p>
+        <p className="text-[10px] text-white/50">Ref: {reference}</p>
       </div>
 
       {/* Tip selector */}
@@ -74,33 +74,32 @@ export function TipForm({ bookingId, driverName, reference }: TipFormProps) {
       />
 
       {/* Submit */}
-      <button
-        type="button"
+      <IconButton
+        icon={Heart}
+        iconRight={ArrowRight}
+        variant="glow"
+        size="lg"
+        fullWidth
         onClick={() => handleSubmit(false)}
-        disabled={selectedCents === 0 || isPending}
-        className={cn(
-          "tap flex h-14 w-full items-center justify-center rounded-2xl text-[15px] font-semibold transition-opacity",
-          selectedCents > 0
-            ? "bg-primary text-primary-foreground"
-            : "cursor-not-allowed bg-muted text-muted-foreground opacity-50",
-          isPending && "opacity-60",
-        )}
+        disabled={selectedCents === 0}
+        loading={isPending}
+        loadingLabel="Processing…"
       >
-        {isPending
-          ? "Processing…"
-          : selectedCents > 0
-            ? `Send R${(selectedCents / 100).toFixed(2)} tip`
-            : "Select a tip amount"}
-      </button>
+        {selectedCents > 0
+          ? `Send R${(selectedCents / 100).toFixed(2)} tip`
+          : "Select a tip amount"}
+      </IconButton>
 
-      <button
-        type="button"
+      <IconButton
+        icon={ChevronRight}
+        variant="ghost"
+        size="sm"
         onClick={() => handleSubmit(true)}
         disabled={isPending}
-        className="text-center text-[13px] text-muted-foreground underline-offset-4 hover:underline disabled:opacity-40"
+        className="self-center"
       >
         Skip — no tip this time
-      </button>
+      </IconButton>
     </div>
   )
 }

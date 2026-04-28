@@ -8,6 +8,7 @@ export type BookingStatus =
   | "driver_assigned"
   | "driver_on_the_way"
   | "arrived"
+  | "passenger_collected"
   | "in_progress"
   | "completed"
   | "cancelled"
@@ -24,7 +25,7 @@ export type PaymentStatus =
   | "eft_requested"
   | "admin_confirmed"
 
-export type UserRole = "customer" | "driver" | "admin"
+export type UserRole = "customer" | "driver" | "admin" | "super_admin"
 
 export interface LatLng {
   lat: number

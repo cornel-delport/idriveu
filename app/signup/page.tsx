@@ -4,13 +4,25 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { BrandLogo } from '@/components/brand-logo'
-import { ArrowLeft } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  User,
+  UserPlus,
+  Mail,
+  Phone,
+  Lock,
+  Eye,
+  EyeOff,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { registerUser } from '@/actions/auth'
+import {
+  IconInput,
+  IconButton,
+  CircleIconButton,
+} from '@/components/ui-icon'
 
 export default function SignupPage() {
   const router = useRouter()
@@ -19,6 +31,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -49,21 +62,20 @@ export default function SignupPage() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-background">
-      <header className="flex items-center justify-between px-5 pt-6 pb-4">
-        <Link
-          href="/"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+      <header className="flex items-center justify-between px-5 pb-4 pt-6">
+        <CircleIconButton
+          icon={ArrowLeft}
+          variant="secondary"
+          ariaLabel="Back"
+          onClick={() => router.back()}
+        />
         <BrandLogo size="sm" />
         <div className="h-10 w-10" aria-hidden />
       </header>
 
       <div className="flex flex-1 flex-col px-5 pt-6">
-        <div className="mb-8">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-foreground text-balance">
+        <div className="mb-6">
+          <h1 className="text-balance text-[28px] font-semibold leading-tight tracking-tight text-foreground">
             Create your account
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
@@ -71,90 +83,89 @@ export default function SignupPage() {
           </p>
         </div>
 
-        <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
-          <FieldGroup className="gap-5">
-            <div className="grid grid-cols-2 gap-3">
-              <Field>
-                <FieldLabel htmlFor="firstname">First name</FieldLabel>
-                <Input
-                  id="firstname"
-                  placeholder="Thandi"
-                  className="h-12 text-base"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-              </Field>
-              <Field>
-                <FieldLabel htmlFor="lastname">Last name</FieldLabel>
-                <Input
-                  id="lastname"
-                  placeholder="Mokoena"
-                  className="h-12 text-base"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-              </Field>
-            </div>
+        <form className="flex flex-1 flex-col gap-3.5" onSubmit={handleSubmit}>
+          <div className="grid grid-cols-2 gap-3">
+            <IconInput
+              icon={User}
+              label="First name"
+              placeholder="Thandi"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
+              required
+              autoComplete="given-name"
+            />
+            <IconInput
+              icon={User}
+              label="Last name"
+              placeholder="Mokoena"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+              required
+              autoComplete="family-name"
+            />
+          </div>
 
-            <Field>
-              <FieldLabel htmlFor="su-email">Email</FieldLabel>
-              <Input
-                id="su-email"
-                type="email"
-                autoComplete="email"
-                placeholder="you@example.com"
-                className="h-12 text-base"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Field>
+          <IconInput
+            icon={Mail}
+            label="Email"
+            type="email"
+            inputMode="email"
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-            <Field>
-              <FieldLabel htmlFor="su-phone">Mobile number</FieldLabel>
-              <Input
-                id="su-phone"
-                type="tel"
-                inputMode="tel"
-                autoComplete="tel"
-                placeholder="+27 82 123 4567"
-                className="h-12 text-base"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </Field>
+          <IconInput
+            icon={Phone}
+            label="Mobile number"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            placeholder="+27 82 123 4567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            required
+          />
 
-            <Field>
-              <FieldLabel htmlFor="su-password">Password</FieldLabel>
-              <Input
-                id="su-password"
-                type="password"
-                autoComplete="new-password"
-                placeholder="Minimum 8 characters"
-                className="h-12 text-base"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <FieldDescription>
-                By signing up you agree to our{' '}
-                <Link href="/terms" className="font-medium text-primary hover:underline">
-                  terms & safety
-                </Link>
-                .
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
+          <IconInput
+            icon={Lock}
+            label="Password"
+            type={showPwd ? 'text' : 'password'}
+            autoComplete="new-password"
+            placeholder="Minimum 8 characters"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            hint="By signing up you agree to our terms & safety."
+            rightSlot={
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+                className="tap flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-card"
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+          />
 
-          <div className="mt-auto pb-8 pt-10">
-            <Button
+          <div className="mt-auto pb-8 pt-6">
+            <IconButton
               type="submit"
+              icon={UserPlus}
+              iconRight={ArrowRight}
+              variant="glow"
               size="lg"
-              disabled={loading}
-              className="h-12 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+              fullWidth
+              loading={loading}
+              loadingLabel="Creating account…"
             >
-              {loading ? 'Creating account…' : 'Create account'}
-            </Button>
+              Create account
+            </IconButton>
 
-            <div className="mt-3 flex items-center gap-3 text-[13px] text-muted-foreground">
+            <div className="mt-4 flex items-center gap-3 text-[13px] text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
               <span>or</span>
               <div className="h-px flex-1 bg-border" />

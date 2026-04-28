@@ -9,7 +9,8 @@ import { MobileShell } from "@/components/mobile-shell"
 import { AppTopBar } from "@/components/app-top-bar"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
 import Link from "next/link"
-import { ArrowRight, Star } from "lucide-react"
+import { ArrowRight, Star, History, Home } from "lucide-react"
+import { IconButton } from "@/components/ui-icon"
 
 export default async function ReceiptPage({
   params,
@@ -113,29 +114,38 @@ export default async function ReceiptPage({
         {!isAdmin && (
           <div className="mx-auto mt-5 flex max-w-md flex-col gap-3">
             {!booking.review && (
-              <Link
+              <IconButton
+                icon={Star}
+                iconRight={ArrowRight}
+                variant="glow"
+                size="lg"
+                fullWidth
                 href={`/trip/${bookingId}/rate`}
-                className="tap flex h-12 items-center justify-center gap-2 rounded-2xl bg-primary text-[14px] font-semibold text-primary-foreground"
               >
-                <Star className="h-4 w-4" />
                 Rate your trip
-              </Link>
+              </IconButton>
             )}
 
-            <Link
+            <IconButton
+              icon={History}
+              iconRight={ArrowRight}
+              variant="secondary"
+              size="md"
+              fullWidth
               href="/customer/past-trips"
-              className="tap flex h-12 items-center justify-center gap-2 rounded-2xl border border-border bg-card text-[14px] font-medium text-foreground"
             >
               View trip history
-              <ArrowRight className="h-4 w-4" />
-            </Link>
+            </IconButton>
 
-            <Link
+            <IconButton
+              icon={Home}
+              variant="ghost"
+              size="sm"
               href="/dashboard"
-              className="text-center text-[13px] text-muted-foreground underline-offset-4 hover:underline"
+              className="self-center"
             >
               Back to dashboard
-            </Link>
+            </IconButton>
           </div>
         )}
       </main>

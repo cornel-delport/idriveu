@@ -4,17 +4,30 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Field, FieldGroup, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { BrandLogo } from '@/components/brand-logo'
-import { ArrowLeft } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Mail,
+  Lock,
+  LogIn,
+  Eye,
+  EyeOff,
+  Car,
+  Shield,
+} from 'lucide-react'
 import { toast } from 'sonner'
+import {
+  IconInput,
+  IconButton,
+  CircleIconButton,
+} from '@/components/ui-icon'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,75 +52,85 @@ export default function LoginPage() {
 
   return (
     <main className="flex min-h-dvh flex-col bg-background">
-      <header className="flex items-center justify-between px-5 pt-6 pb-4">
-        <Link
-          href="/"
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted text-foreground"
-          aria-label="Back"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
+      <header className="flex items-center justify-between px-5 pb-4 pt-6">
+        <CircleIconButton
+          icon={ArrowLeft}
+          variant="secondary"
+          ariaLabel="Back"
+          onClick={() => router.back()}
+        />
         <BrandLogo size="sm" />
         <div className="h-10 w-10" aria-hidden />
       </header>
 
       <div className="flex flex-1 flex-col px-5 pt-6">
         <div className="mb-8">
-          <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-foreground text-balance">
+          <h1 className="text-balance text-[28px] font-semibold leading-tight tracking-tight text-foreground">
             Welcome back
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-            Sign in to manage your rides and see past trips.
+            Sign in to manage rides and view past trips.
           </p>
         </div>
 
-        <form className="flex flex-1 flex-col" onSubmit={handleSubmit}>
-          <FieldGroup className="gap-5">
-            <Field>
-              <FieldLabel htmlFor="login-email">Email address</FieldLabel>
-              <Input
-                id="login-email"
-                type="text"
-                inputMode="email"
-                autoComplete="username"
-                placeholder="you@example.com"
-                className="h-12 text-base"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Field>
+        <form className="flex flex-1 flex-col gap-4" onSubmit={handleSubmit}>
+          <IconInput
+            icon={Mail}
+            label="Email"
+            type="email"
+            inputMode="email"
+            autoComplete="username"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
 
-            <Field>
-              <FieldLabel htmlFor="login-password">Password</FieldLabel>
-              <Input
-                id="login-password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                className="h-12 text-base"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-              <FieldDescription className="flex items-center justify-between">
-                <span>Use at least 8 characters.</span>
-                <Link href="#" className="font-medium text-primary hover:underline">
-                  Forgot?
-                </Link>
-              </FieldDescription>
-            </Field>
-          </FieldGroup>
+          <IconInput
+            icon={Lock}
+            label="Password"
+            type={showPwd ? 'text' : 'password'}
+            autoComplete="current-password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            rightSlot={
+              <button
+                type="button"
+                onClick={() => setShowPwd((v) => !v)}
+                aria-label={showPwd ? 'Hide password' : 'Show password'}
+                className="tap flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-card"
+              >
+                {showPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            }
+          />
 
-          <div className="mt-auto pb-8 pt-10">
-            <Button
-              type="submit"
-              size="lg"
-              disabled={loading}
-              className="h-12 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90"
+          <div className="-mt-1 flex items-center justify-end">
+            <Link
+              href="#"
+              className="text-[12px] font-medium text-primary hover:underline"
             >
-              {loading ? 'Signing in…' : 'Sign in'}
-            </Button>
+              Forgot password?
+            </Link>
+          </div>
 
-            <div className="mt-3 flex items-center gap-3 text-[13px] text-muted-foreground">
+          <div className="mt-auto pb-8 pt-6">
+            <IconButton
+              type="submit"
+              icon={LogIn}
+              iconRight={ArrowRight}
+              variant="glow"
+              size="lg"
+              fullWidth
+              loading={loading}
+              loadingLabel="Signing in…"
+            >
+              Sign in
+            </IconButton>
+
+            <div className="mt-4 flex items-center gap-3 text-[13px] text-muted-foreground">
               <div className="h-px flex-1 bg-border" />
               <span>or</span>
               <div className="h-px flex-1 bg-border" />
@@ -139,13 +162,18 @@ export default function LoginPage() {
               Continue with Google
             </button>
 
-            <div className="mt-4 flex items-center justify-center gap-4 text-[13px] text-muted-foreground">
-              <Link href="/driver" className="hover:text-foreground">
-                Driver login
+            <div className="mt-5 flex items-center justify-center gap-2 text-[12px] text-muted-foreground">
+              <Link
+                href="/driver"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 hover:bg-secondary"
+              >
+                <Car className="h-3.5 w-3.5" /> Driver
               </Link>
-              <span aria-hidden>·</span>
-              <Link href="/admin" className="hover:text-foreground">
-                Admin
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-3 py-1.5 hover:bg-secondary"
+              >
+                <Shield className="h-3.5 w-3.5" /> Admin
               </Link>
             </div>
 
