@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 const db = new PrismaClient()
 
 async function main() {
-  // Seed admin user
+  // Seed admin user (legacy account — kept for backwards compatibility)
   const password = process.env.SEED_ADMIN_PASSWORD ?? 'IDriveU-admin-2026!'
   const passwordHash = await bcrypt.hash(password, 12)
   await db.user.upsert({
@@ -15,6 +15,24 @@ async function main() {
       name: 'Cornel Delport',
       passwordHash,
       role: 'admin',
+    },
+  })
+
+  // Platform super_admin — main owner account
+  // role + status are STICKY across re-seeds so this account stays admin even
+  // if it gets demoted by accident
+  await db.user.upsert({
+    where: { email: 'cornel@gomuster.com' },
+    update: {
+      role: 'super_admin',
+      status: 'active',
+    },
+    create: {
+      email: 'cornel@gomuster.com',
+      name: 'Cornel Delport',
+      passwordHash,
+      role: 'super_admin',
+      status: 'active',
     },
   })
 
