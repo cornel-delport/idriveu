@@ -17,6 +17,15 @@ type AuthUser = {
 
 export const { auth, handlers, signIn, signOut } = NextAuth({
   adapter: PrismaAdapter(db),
+  // Explicit secret resolution — proxy.ts reads NEXTAUTH_SECRET first too,
+  // so making them match prevents JWT signing/verification mismatches when
+  // the cookie is created by NextAuth but read by the proxy.
+  secret: process.env.NEXTAUTH_SECRET ?? process.env.AUTH_SECRET,
+  // Required on Vercel when serving the same project from multiple domain
+  // aliases (v0-idriveu.vercel.app, v0-private-driver-app.vercel.app, etc).
+  // Without this NextAuth v5 may refuse to set cookies on aliases it doesn't
+  // recognise as trusted, silently dropping the session after Google OAuth.
+  trustHost: true,
   session: { strategy: 'jwt' },
   pages: {
     signIn: '/login',
