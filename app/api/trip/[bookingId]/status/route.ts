@@ -26,6 +26,56 @@ const BodySchema = z.object({
   }),
 })
 
+/**
+ * GET /api/trip/[bookingId]/status
+ * Lightweight status snapshot used by clients polling for changes
+ * (e.g. ArrivalAlertPoller). Customer-only — admins can also read.
+ */
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ bookingId: string }> },
+) {
+  const session = await auth()
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const { bookingId } = await params
+  try {
+    const booking = await db.booking.findUnique({
+      where: { id: bookingId },
+      select: {
+        customerId: true,
+        driverId: true,
+        status: true,
+        statusUpdatedAt: true,
+        arrivalAlertAcknowledged: true,
+      },
+    })
+    if (!booking) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 })
+    }
+    const role = (session.user as { role?: string }).role
+    const isAdmin = role === "admin" || role === "super_admin"
+    if (
+      booking.customerId !== session.user.id &&
+      booking.driverId !== session.user.id &&
+      !isAdmin
+    ) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+    return NextResponse.json({
+      status: booking.status,
+      statusUpdatedAt: booking.statusUpdatedAt,
+      arrivalAlertAcknowledged: booking.arrivalAlertAcknowledged,
+    })
+  } catch (err: unknown) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[GET status snapshot]", err)
+    }
+    return NextResponse.json({ error: "Internal error" }, { status: 500 })
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ bookingId: string }> },

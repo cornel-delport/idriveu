@@ -9,6 +9,7 @@ import { HowItWorks } from "@/components/landing/how-it-works"
 import { TrustStack } from "@/components/landing/trust-stack"
 import { Testimonials } from "@/components/landing/testimonials"
 import { LandingCta } from "@/components/landing/landing-cta"
+import { RestaurantQrFeatureCard } from "@/components/restaurant/restaurant-qr-feature-card"
 
 export const dynamic = "force-dynamic"
 
@@ -35,6 +36,8 @@ export default async function HomePage() {
     <MobileShell>
       <main>
         <MobileHero />
+        {/* Restaurant QR pickup — primary new feature, sits above the fold */}
+        <RestaurantQrFeatureCard />
         <QuickBook />
         <ServiceCarousel />
         <HowItWorks />

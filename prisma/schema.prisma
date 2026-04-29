@@ -49,6 +49,19 @@ enum PaymentMethod {
   cash
 }
 
+enum BookingSource {
+  standard
+  restaurant_qr
+  admin_created
+}
+
+enum PickupType {
+  manual
+  restaurant
+  airport
+  saved_location
+}
+
 // ── Core Auth Models (NextAuth required) ───────────────────────────────────
 
 model Account {
@@ -215,6 +228,21 @@ model Booking {
   notes                String?
   createdAt            DateTime      @default(now())
 
+  // ── Restaurant QR / multi-source booking ──────────────────────────────────
+  source                    BookingSource @default(standard)
+  pickupType                PickupType    @default(manual)
+  pickupLocked              Boolean       @default(false)
+  pickupNote                String?
+  arrivalAlertSent          Boolean       @default(false)
+  arrivalAlertAcknowledged  Boolean       @default(false)
+  paymentProvider           String?       // "paystack" | "manual" | etc
+  paymentReference          String?       // PSP reference (e.g. Paystack tx ref)
+
+  restaurantId       String?
+  restaurant         Restaurant?      @relation(fields: [restaurantId], references: [id])
+  restaurantQrCodeId String?
+  restaurantQrCode   RestaurantQrCode? @relation(fields: [restaurantQrCodeId], references: [id])
+
   childDetail   ChildDetail?
   review        Review?
   tip           Tip?
@@ -222,6 +250,10 @@ model Booking {
   whatsappLogs  WhatsAppLog[]
   tripEvents    TripEvent[]
   driverLocation DriverLocation?
+
+  @@index([source])
+  @@index([restaurantId])
+  @@index([driverId, status])
 }
 
 model ChildDetail {
@@ -378,4 +410,49 @@ model DriverLocation {
   createdAt DateTime @default(now())
 
   @@index([bookingId])
+}
+
+// ── Restaurants & QR Pickups ───────────────────────────────────────────────
+
+model Restaurant {
+  id              String   @id @default(cuid())
+  name            String
+  address         String
+  lat             Float
+  lng             Float
+  /// Short, human-typeable code shown on table tents — also encoded into QR URL
+  restaurantCode  String   @unique
+  contactName     String?
+  contactPhone    String?
+  /// active | inactive — only active restaurants accept QR bookings
+  status          String   @default("active")
+  /// Optional: skip the standard call-out fee for partner restaurants
+  waiveCallOutFee Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  qrCodes  RestaurantQrCode[]
+  bookings Booking[]
+
+  @@index([status])
+}
+
+model RestaurantQrCode {
+  id           String   @id @default(cuid())
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  /// Full URL embedded in the QR image (e.g. https://idriveu.app/qr/restaurant/PLETT-001?t=12)
+  qrCodeUrl    String
+  tableNumber  String?
+  /// active | inactive
+  status       String   @default("active")
+  scanCount    Int      @default(0)
+  lastScannedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bookings Booking[]
+
+  @@index([restaurantId])
+  @@index([status])
 }

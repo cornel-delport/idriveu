@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { LiveTripMap } from "@/components/trip/live-trip-map"
 import { TripStatusSheet } from "@/components/trip/trip-status-sheet"
+import { ArrivalAlertPoller } from "@/components/restaurant/arrival-alert-poller"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import type { BookingStatus } from "@/lib/types"
@@ -69,6 +70,16 @@ export default async function TripTrackingPage({
           dropoffAddress={booking.dropoffAddress}
         />
       </div>
+
+      {/* "Your driver is outside" alert — fires when status flips to arrived */}
+      <ArrivalAlertPoller
+        bookingId={booking.id}
+        initiallyArrived={booking.status === "arrived"}
+        initiallyAcknowledged={booking.arrivalAlertAcknowledged}
+        driverName={booking.driver?.name ?? null}
+        driverPhone={booking.driver?.phone ?? null}
+        pickupLabel={booking.pickupAddress}
+      />
     </div>
   )
 }

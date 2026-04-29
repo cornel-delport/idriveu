@@ -11,6 +11,7 @@ import {
   Car as CarIcon,
   ClipboardList,
   ChevronRight,
+  Building2,
 } from 'lucide-react'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
@@ -99,6 +100,14 @@ export default async function AdminDashboard() {
             href="/admin/drivers"
             showChevron
             tone="success"
+          />
+          <IconCard
+            icon={Building2}
+            title="Restaurants & QR codes"
+            description="Add venues, generate table QR codes"
+            href="/admin/restaurants"
+            showChevron
+            tone="accent"
           />
           <IconCard
             icon={ClipboardList}

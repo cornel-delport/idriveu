@@ -29,6 +29,7 @@ import {
   IconStat,
 } from "@/components/ui-icon"
 import { SignedInAs } from "@/components/role-banner"
+import { RestaurantQrFeatureCard } from "@/components/restaurant/restaurant-qr-feature-card"
 
 function mapBooking(b: PrismaBooking): Booking {
   return {
@@ -127,6 +128,9 @@ export default async function CustomerDashboard() {
             tone="warning"
           />
         </section>
+
+        {/* QR Restaurant Pickup — primary new feature */}
+        <RestaurantQrFeatureCard className="-mx-4 mt-5 px-0" />
 
         {/* Quick booking CTA — premium dark gradient card */}
         <Link
