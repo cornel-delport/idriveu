@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { Car, User, Shield, ChevronRight, LogIn, CheckSquare, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -103,9 +104,9 @@ export function RoleFlowRepresentation() {
       {/* Destinations */}
       <div className="grid w-full max-w-sm grid-cols-1 gap-2">
         {destinations.map((dest) => (
-          <a key={dest.label} href={dest.href} className="transition hover:opacity-80">
+          <Link key={dest.label} href={dest.href} className="transition hover:opacity-80">
             <FlowCard label={dest.label} sub={dest.sub} icon={dest.icon} accent={dest.accent} />
-          </a>
+          </Link>
         ))}
       </div>
 

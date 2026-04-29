@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { MapPin, Navigation, ArrowRight, Shield, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -12,6 +13,7 @@ interface HomeClientProps {
 }
 
 export function HomeClient({ role, name }: HomeClientProps) {
+  const router = useRouter()
   const [pickup, setPickup] = useState('')
   const [dropoff, setDropoff] = useState('')
   const [routeReady, setRouteReady] = useState(false)
@@ -106,7 +108,7 @@ export function HomeClient({ role, name }: HomeClientProps) {
           const params = new URLSearchParams()
           if (pickup) params.set('pickup', pickup)
           if (dropoff) params.set('dropoff', dropoff)
-          window.location.href = `/book?${params.toString()}`
+          router.push(`/book?${params.toString()}`)
         }}
       >
         Request ride

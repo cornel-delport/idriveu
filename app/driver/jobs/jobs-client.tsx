@@ -136,7 +136,7 @@ function JobCard({
 export function JobsClient({ jobs: initialJobs, activeTrip }: JobsClientProps) {
   const [jobs, setJobs] = useState(initialJobs)
   const [claimingId, setClaimingId] = useState<string | null>(null)
-  const [_isPending, startTransition] = useTransition()
+  const [, startTransition] = useTransition()
 
   function handleAccept(id: string) {
     setClaimingId(id)
