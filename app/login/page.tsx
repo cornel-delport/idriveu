@@ -1,9 +1,9 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { signIn } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { BrandLogo } from '@/components/brand-logo'
 import {
   ArrowLeft,
@@ -23,12 +23,36 @@ import {
   CircleIconButton,
 } from '@/components/ui-icon'
 
+// User-friendly messages for NextAuth's ?error=... query param.
+// NextAuth redirects here on any auth failure (e.g. OAuth account-not-linked,
+// configuration error, access denied) with the error code in the URL.
+const ERROR_MESSAGES: Record<string, string> = {
+  OAuthAccountNotLinked:
+    'That email is already linked to a different sign-in method. Sign in with the original method first, then link Google from your profile.',
+  AccessDenied: 'Sign-in was cancelled or denied.',
+  Configuration: 'Sign-in is misconfigured on the server. Please contact support.',
+  Verification: 'That sign-in link has expired. Please try again.',
+  OAuthSignin: 'Could not start the Google sign-in. Please try again.',
+  OAuthCallback: 'Google sign-in failed. Please try again.',
+  CredentialsSignin: 'Invalid email or password.',
+  Default: 'Sign-in failed. Please try again.',
+}
+
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [loading, setLoading] = useState(false)
+
+  // Surface NextAuth errors instead of silently bouncing the user
+  useEffect(() => {
+    const err = searchParams.get('error')
+    if (err) {
+      toast.error(ERROR_MESSAGES[err] ?? ERROR_MESSAGES.Default)
+    }
+  }, [searchParams])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

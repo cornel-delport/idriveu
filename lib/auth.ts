@@ -26,6 +26,12 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      // Safe to enable: Google verifies email ownership before issuing the
+      // ID token, so an attacker can't claim someone else's email via Google
+      // OAuth. Without this, signing in with Google as an email that was
+      // first registered via credentials throws OAuthAccountNotLinked and
+      // silently bounces the user back to /login.
+      allowDangerousEmailAccountLinking: true,
     }),
     Credentials({
       name: 'credentials',
@@ -68,22 +74,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
     async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = user.id
-        token.role = (user as AuthUser).role ?? 'customer'
-        token.phone = (user as AuthUser).phone ?? null
+        // Always read fresh role + phone from DB on every sign-in. The
+        // PrismaAdapter `user` object passed by Google OAuth doesn't include
+        // our custom fields (role, phone), so we must look them up. Without
+        // this, OAuth users always end up with role = 'customer' regardless
+        // of their actual role in the database.
+        const dbUser = await db.user.findUnique({
+          where: { id: user.id as string },
+          select: { role: true, phone: true },
+        })
+        token.role = dbUser?.role ?? (user as AuthUser).role ?? 'customer'
+        token.phone = dbUser?.phone ?? (user as AuthUser).phone ?? null
       }
-      // On first Google sign-in, user exists but role/phone may not be in token yet
-      // Load from DB to ensure role is correct
-      if (token.id && !token.role) {
-        const dbUser = await db.user.findUnique({ where: { id: token.id as string } })
-        if (dbUser) {
-          token.role = dbUser.role
-          token.phone = dbUser.phone
-        }
-      }
-      // Handle session updates (e.g. after phone completion)
+      // Handle session updates (e.g. after phone completion or role change)
       if (trigger === 'update' && session) {
         token.phone = session.phone ?? token.phone
         token.name = session.name ?? token.name
+        if (session.role) token.role = session.role
       }
       return token
     },
