@@ -39,18 +39,20 @@ export default function LoginPage() {
         password,
         redirect: false,
       })
-      if (result?.error) {
+      if (!result || result.error) {
         toast.error('Invalid email or password.')
-      } else {
-        // Re-fetch the session so we can read the role that was just set in the JWT.
-        const { getSession } = await import('next-auth/react')
-        const { roleRedirectUrl } = await import('@/lib/auth-redirect')
-        const session = await getSession()
-        const role = (session?.user as { role?: string } | undefined)?.role
-        router.push(roleRedirectUrl(role))
-        router.refresh()
+        setLoading(false)
+        return
       }
-    } finally {
+      // Full-page navigation to / ensures the freshly-set NextAuth cookie is
+      // sent on the next request. The / route is a server component that
+      // calls auth() then redirect(roleRedirectUrl(role)) — so the role-aware
+      // routing happens server-side where the cookie is guaranteed available.
+      // This avoids the client-side race where getSession() returns null
+      // before the cookie has fully propagated, which would loop back to /login.
+      window.location.href = '/'
+    } catch {
+      toast.error('Something went wrong. Please try again.')
       setLoading(false)
     }
   }

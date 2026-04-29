@@ -52,13 +52,10 @@ export default function SignupPage() {
         toast.error('Account created but sign-in failed. Please log in.')
         router.push('/login')
       } else {
-        // Role-aware redirect — read the JWT-set role then route accordingly
-        const { getSession } = await import('next-auth/react')
-        const { roleRedirectUrl } = await import('@/lib/auth-redirect')
-        const session = await getSession()
-        const role = (session?.user as { role?: string } | undefined)?.role
-        router.push(roleRedirectUrl(role))
-        router.refresh()
+        // Full-page navigation so the freshly-set auth cookie is sent on
+        // the next request — avoids the getSession() race that leaves users
+        // looping back to /login. The / route does role-aware redirect server-side.
+        window.location.href = '/'
       }
     } finally {
       setLoading(false)
