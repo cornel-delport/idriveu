@@ -16,15 +16,15 @@ import {
 import { cn } from '@/lib/utils'
 
 const customerItems = [
-  { href: '/', label: 'Home', icon: Home },
+  { href: '/home', label: 'Home', icon: Home },
   { href: '/bookings', label: 'Bookings', icon: CalendarClock },
   { href: '/map', label: 'Map', icon: MapIcon },
   { href: '/profile', label: 'Profile', icon: User },
 ] as const
 
 const driverItems = [
+  { href: '/driver/jobs', label: 'Jobs', icon: BriefcaseBusiness },
   { href: '/driver', label: 'Dashboard', icon: Car },
-  { href: '/driver/available', label: 'Available', icon: BriefcaseBusiness },
   { href: '/driver/history', label: 'History', icon: History },
   { href: '/profile', label: 'Profile', icon: User },
 ] as const
@@ -51,7 +51,11 @@ export function BottomNav({ className }: BottomNavProps) {
 
   const role = session?.user?.role ?? 'customer'
   const items =
-    role === 'admin' ? adminItems : role === 'driver' ? driverItems : customerItems
+    role === 'admin' || role === 'super_admin'
+      ? adminItems
+      : role === 'driver'
+        ? driverItems
+        : customerItems
 
   return (
     <nav
