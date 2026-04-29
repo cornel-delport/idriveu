@@ -44,13 +44,10 @@ export default function LoginPage() {
       } else {
         // Re-fetch the session so we can read the role that was just set in the JWT.
         const { getSession } = await import('next-auth/react')
+        const { roleRedirectUrl } = await import('@/lib/auth-redirect')
         const session = await getSession()
         const role = (session?.user as { role?: string } | undefined)?.role
-        const dest =
-          role === 'driver' ? '/driver/jobs'
-          : role === 'admin' || role === 'super_admin' ? '/home'
-          : '/home'
-        router.push(dest)
+        router.push(roleRedirectUrl(role))
         router.refresh()
       }
     } finally {

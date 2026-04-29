@@ -51,7 +51,11 @@ export function BottomNav({ className }: BottomNavProps) {
 
   const role = session?.user?.role ?? 'customer'
   const items =
-    role === 'admin' ? adminItems : role === 'driver' ? driverItems : customerItems
+    role === 'admin' || role === 'super_admin'
+      ? adminItems
+      : role === 'driver'
+        ? driverItems
+        : customerItems
 
   return (
     <nav

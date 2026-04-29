@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
+import { roleRedirectUrl } from "@/lib/auth-redirect"
 import { MobileShell } from "@/components/mobile-shell"
 import { BottomNav, BottomNavSpacer } from "@/components/bottom-nav"
 import { MobileHero } from "@/components/landing/mobile-hero"
@@ -27,9 +28,7 @@ export default async function HomePage() {
   const session = await auth()
   const role = (session?.user as { role?: string } | undefined)?.role
 
-  if (role === "customer") redirect("/home")
-  if (role === "driver") redirect("/driver/jobs")
-  if (role === "admin" || role === "super_admin") redirect("/home")
+  if (role) redirect(roleRedirectUrl(role))
 
   // No session — show public marketing landing
   return (
