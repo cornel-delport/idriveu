@@ -27,9 +27,9 @@ export default async function HomePage() {
   const session = await auth()
   const role = (session?.user as { role?: string } | undefined)?.role
 
-  if (role === "customer") redirect("/dashboard")
-  if (role === "driver") redirect("/driver")
-  if (role === "admin" || role === "super_admin") redirect("/admin")
+  if (role === "customer") redirect("/home")
+  if (role === "driver") redirect("/driver/jobs")
+  if (role === "admin" || role === "super_admin") redirect("/home")
 
   // No session — show public marketing landing
   return (
