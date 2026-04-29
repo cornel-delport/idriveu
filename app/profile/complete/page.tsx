@@ -2,11 +2,12 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from 'next-auth/react'
+import { useSession, getSession } from 'next-auth/react'
 import { BrandLogo } from '@/components/brand-logo'
 import { Phone, ArrowRight, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { IconInput, IconButton } from '@/components/ui-icon'
+import { roleRedirectUrl } from '@/lib/auth-redirect'
 
 export default function CompleteProfilePage() {
   const router = useRouter()
@@ -27,7 +28,10 @@ export default function CompleteProfilePage() {
       if (!res.ok) throw new Error('Failed to update')
       await update({ phone })
       toast.success('Profile complete!')
-      router.push('/book')
+      // Role-aware redirect — admins go to /home, drivers to /driver/jobs, etc.
+      const session = await getSession()
+      const role = (session?.user as { role?: string } | undefined)?.role
+      router.push(roleRedirectUrl(role))
     } catch {
       toast.error('Something went wrong. Please try again.')
     } finally {
