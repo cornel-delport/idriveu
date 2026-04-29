@@ -17,12 +17,11 @@ export const dynamic = "force-dynamic"
 /**
  * Role-aware landing.
  * - Unauthenticated → public landing page (hero + quick book + trust)
- * - Customer        → /dashboard
- * - Driver          → /driver
- * - Admin / Super   → /admin
+ * - Customer        → /home
+ * - Admin / Super   → /home (with Manage Users CTA)
+ * - Driver          → /driver/jobs
  *
- * Per-role redirects let each role land on a tailored home, while still
- * exposing the marketing site to people not yet signed in.
+ * Destinations resolved via lib/auth-redirect.ts.
  */
 export default async function HomePage() {
   const session = await auth()
